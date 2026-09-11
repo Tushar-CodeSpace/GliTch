@@ -21,6 +21,7 @@ GliTch/
 │   ├── vite.config.js    # Vite configuration and API proxy (/api -> localhost:8000)
 │   └── package.json      # Node.js dependencies
 ├── .gitignore        # Git ignore rules for Python venv, node_modules, build artifacts
+├── docker-compose.yml# Docker Compose orchestration config
 └── README.md
 ```
 
@@ -70,6 +71,19 @@ npm run dev
 ```
 
 - **Frontend Application URL**: [http://localhost:5173](http://localhost:5173)
+
+---
+
+### 4. Running via Docker Compose
+
+To launch the full-stack application inside isolated containers with one command:
+
+```bash
+docker compose up --build
+```
+
+- **Frontend Application**: [http://localhost](http://localhost) (Port 80)
+- **FastAPI Backend**: [http://localhost:8000](http://localhost:8000) (Port 8000)
 
 ---
 
