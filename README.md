@@ -8,18 +8,20 @@ Full-stack web application with a **React** (Vite) frontend and a **Python FastA
 
 ```text
 GliTch/
-├── backend/
-│   ├── main.py           # FastAPI application entry point with CORS and REST routes
-│   ├── pyproject.toml    # Python dependencies and metadata managed by uv
-│   └── README.md         # Backend documentation
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx       # Main React UI dashboard component
-│   │   ├── main.jsx      # React DOM entry point
-│   │   └── index.css     # Global styling, tokens, and layout styles
-│   ├── index.html        # HTML entry layout
-│   ├── vite.config.js    # Vite configuration and API proxy (/api -> localhost:8000)
-│   └── package.json      # Node.js dependencies
+├── services/
+│   ├── api_gateway/
+│   │   ├── main.py           # FastAPI application entry point with CORS and REST routes
+│   │   ├── pyproject.toml    # Python dependencies and metadata managed by uv
+│   │   └── README.md         # API Gateway documentation
+│   ├── frontend/
+│   │   ├── src/
+│   │   │   ├── App.jsx       # Main React UI dashboard component
+│   │   │   ├── main.jsx      # React DOM entry point
+│   │   │   └── index.css     # Global styling, tokens, and layout styles
+│   │   ├── index.html        # HTML entry layout
+│   │   ├── vite.config.js    # Vite configuration and API proxy (/api -> localhost:8000)
+│   │   └── package.json      # Node.js dependencies
+│   └── scraper_agent/
 ├── .gitignore        # Git ignore rules for Python venv, node_modules, build artifacts
 ├── docker-compose.yml# Docker Compose orchestration config
 └── README.md
@@ -36,12 +38,12 @@ GliTch/
 
 ---
 
-### 2. Backend Setup (`FastAPI` + `uv`)
+### 2. API Gateway Setup (`FastAPI` + `uv`)
 
 Execute the following commands in your terminal:
 
 ```bash
-cd backend
+cd services/api_gateway
 
 # Create virtual environment and install dependencies
 uv venv
@@ -61,7 +63,7 @@ uv run uvicorn main:app --reload --port 8000
 In a separate terminal window, execute:
 
 ```bash
-cd frontend
+cd services/frontend
 
 # Install dependencies
 npm install
@@ -83,7 +85,7 @@ docker compose up --build
 ```
 
 - **Frontend Application**: [http://localhost](http://localhost) (Port 80)
-- **FastAPI Backend**: [http://localhost:8000](http://localhost:8000) (Port 8000)
+- **FastAPI API Gateway**: [http://localhost:8000](http://localhost:8000) (Port 8000)
 
 ---
 

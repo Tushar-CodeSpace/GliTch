@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  backend:
-    image: ghcr.io/tushar-codespace/glitch-backend:latest
-    container_name: glitch-backend
+  api-gateway:
+    image: ghcr.io/tushar-codespace/glitch-api-gateway:latest
+    container_name: glitch-api-gateway
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -14,5 +14,5 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - backend
+      - api-gateway
     restart: unless-stopped

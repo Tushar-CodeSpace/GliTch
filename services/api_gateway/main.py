@@ -7,8 +7,8 @@ import os
 import httpx
 
 app = FastAPI(
-    title="GliTch API",
-    description="FastAPI backend for GliTch React application",
+    title="GliTch API Gateway",
+    description="FastAPI API Gateway for GliTch React application",
     version="1.0.0"
 )
 

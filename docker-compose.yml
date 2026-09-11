@@ -1,11 +1,11 @@
 version: '3.8'
 
 services:
-  backend:
+  api-gateway:
     build:
-      context: ./backend
+      context: ./services/api_gateway
       dockerfile: Dockerfile
-    container_name: glitch-backend
+    container_name: glitch-api-gateway
     ports:
       - "8000:8000"
     restart: unless-stopped
@@ -21,12 +21,12 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./services/frontend
       dockerfile: Dockerfile
     container_name: glitch-frontend
     ports:
       - "80:80"
     depends_on:
-      - backend
+      - api-gateway
       - scraper-agent
     restart: unless-stopped

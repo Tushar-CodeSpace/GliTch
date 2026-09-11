@@ -1,7 +1,7 @@
 [project]
-name = "glitch-backend"
+name = "glitch-api-gateway"
 version = "0.1.0"
-description = "FastAPI backend managed with uv for GliTch"
+description = "FastAPI API Gateway managed with uv for GliTch"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [

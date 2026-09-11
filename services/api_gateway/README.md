@@ -1,8 +1,8 @@
-# GliTch Backend API
+# GliTch API Gateway
 
-FastAPI backend application managed with `uv`.
+FastAPI API Gateway application managed with `uv`.
 
-## Running the backend
+## Running the API Gateway
 ```bash
 uv run uvicorn main:app --reload --port 8000
 ```
