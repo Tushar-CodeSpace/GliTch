@@ -369,7 +369,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
             TECH &bull; TOOLS &bull; TOMORROW
           </p>
           <p className="text-sm text-zinc-400 leading-relaxed font-sans max-w-md">
-            Personalized DevOps console for real-time infrastructure, API services, and automated workflow management.
+            Personalized DevOps console for multi-client real-time infrastructure, API services, and automated workflow management.
           </p>
 
           {/* DevOps Activity Highlights Grid */}
