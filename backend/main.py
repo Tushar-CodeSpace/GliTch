@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
 import time
+import os
+import httpx
 
 app = FastAPI(
     title="GliTch API",
@@ -13,7 +15,7 @@ app = FastAPI(
 # Enable CORS for frontend development
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173", "*"],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,6 +30,12 @@ class Item(ItemCreate):
     id: int
     created_at: str
     status: str = "active"
+
+class ChatRequest(BaseModel):
+    prompt: str
+
+# Scraper Agent URL (configurable via env var for local dev vs Docker network)
+SCRAPER_AGENT_URL = os.getenv("SCRAPER_AGENT_URL", "http://127.0.0.1:8001")
 
 # In-memory storage for basic application demonstration
 items_db: List[Item] = [
@@ -49,8 +57,8 @@ items_db: List[Item] = [
     ),
     Item(
         id=3,
-        title="Asynchronous API Bridge",
-        description="Real-time status updates and CRUD actions between React state and FastAPI routes.",
+        title="Playwright Scraper Agent",
+        description="Automated web scraping microservice with ChatGPT textbox sensing.",
         category="Architecture",
         created_at=time.strftime("%Y-%m-%d %H:%M:%S"),
         status="active"
@@ -73,8 +81,10 @@ def health_check():
         "service": "GliTch FastAPI Engine",
         "version": "1.0.0",
         "timestamp": time.time(),
-        "python_version": "3.14"
+        "python_version": "3.12"
     }
+
+
 
 @app.get("/api/items", response_model=List[Item])
 def get_items():

@@ -189,7 +189,6 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
 
       {/* DASHBOARD STATS GRID */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
         <Card className="p-5 bg-[#050508]/90 border-white/10 hover:border-cyan-500/40 transition-colors">
           <div className="flex justify-between items-start">
             <div>
@@ -208,15 +207,15 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
         <Card className="p-5 bg-[#050508]/90 border-white/10 hover:border-fuchsia-500/40 transition-colors">
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-xs font-mono text-zinc-400 uppercase">Package Manager</p>
-              <h3 className="text-xl font-bold mt-1 text-white">uv 0.12</h3>
+              <p className="text-xs font-mono text-zinc-400 uppercase">Scraper Agent</p>
+              <h3 className="text-xl font-bold mt-1 text-white">Playwright</h3>
             </div>
             <div className="p-2.5 bg-fuchsia-500/10 rounded-lg text-fuchsia-400 border border-fuchsia-500/20">
               <Cpu className="w-5 h-5" />
             </div>
           </div>
           <p className="text-xs font-mono text-zinc-500 mt-3">
-            Ultra-fast Rust package resolver
+            Port 8001 &bull; Textbox Sensed
           </p>
         </Card>
 
@@ -249,7 +248,6 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
             Active items in backend state
           </p>
         </Card>
-
       </div>
 
       {/* RESOURCE MANAGER */}
@@ -268,8 +266,6 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
         </CardHeader>
 
         <CardContent className="space-y-4 pt-6">
-          
-          {/* Add Form */}
           {showAddForm && (
             <form onSubmit={handleCreateItem} className="p-4 rounded-lg border border-zinc-800 bg-black/80 space-y-4">
               <h4 className="text-sm font-semibold text-cyan-400 font-mono">New Resource Entry</h4>
@@ -324,7 +320,6 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
             </form>
           )}
 
-          {/* Category Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-1">
             {categories.map(cat => (
               <button
@@ -341,7 +336,6 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
             ))}
           </div>
 
-          {/* Items Grid */}
           {loadingItems ? (
             <div className="py-12 text-center text-sm font-mono text-zinc-500">
               Loading resources...
@@ -376,7 +370,6 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
               ))}
             </div>
           )}
-
         </CardContent>
       </Card>
 
