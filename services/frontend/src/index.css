@@ -4,33 +4,33 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 160 30% 2.5%;
+    --foreground: 150 15% 95%;
 
-    --card: 222.2 84% 6.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 160 25% 4%;
+    --card-foreground: 150 15% 95%;
 
-    --popover: 222.2 84% 6.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 160 25% 4%;
+    --popover-foreground: 150 15% 95%;
 
-    --primary: 199 89% 48%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 158 64% 45%;
+    --primary-foreground: 160 30% 2.5%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 160 15% 10%;
+    --secondary-foreground: 150 15% 95%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 160 15% 10%;
+    --muted-foreground: 150 10% 60%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 160 15% 10%;
+    --accent-foreground: 150 15% 95%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 45%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 199 89% 48%;
+    --border: 160 15% 12%;
+    --input: 160 15% 12%;
+    --ring: 158 64% 45%;
 
     --radius: 0.75rem;
   }
@@ -41,11 +41,69 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground font-sans antialiased;
+    @apply bg-[#080b0a] text-foreground font-sans antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #080b0a;
     background-image: 
-      radial-gradient(circle at 15% 15%, rgba(56, 189, 248, 0.05) 0%, transparent 45%),
-      radial-gradient(circle at 85% 85%, rgba(168, 85, 247, 0.05) 0%, transparent 45%);
+      radial-gradient(ellipse 70% 40% at 50% -10%, rgba(16, 185, 129, 0.08), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 90% 90%, rgba(52, 211, 153, 0.04), transparent 70%);
     background-attachment: fixed;
     min-height: 100vh;
   }
 }
+
+/* Professional Emerald & Pitch Black Cards */
+.glass-panel {
+  background: rgba(10, 15, 13, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.glass-card {
+  background: rgba(13, 18, 16, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-card:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.15);
+}
+
+.emerald-glow {
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.25);
+}
+
+/* Custom Professional Scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: #080b0a;
+}
+::-webkit-scrollbar-thumb {
+  background: #19221d;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #25332c;
+}
+
+/* Sharp Terminal Cursor Step Blink Animation */
+@keyframes terminal-blink {
+  0%, 49% {
+    opacity: 1;
+  }
+  50%, 100% {
+    opacity: 0;
+  }
+}
+
+.animate-terminal-blink {
+  animation: terminal-blink 1s steps(1) infinite;
+}
+
