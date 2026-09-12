@@ -339,15 +339,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
       if (email.includes("@") && password.length >= 4) {
         onLoginSuccess(email);
       } else {
-        setError("Invalid email or password. Try admin@glitch.io / password");
+        setError("Invalid email address or authentication password.");
       }
     }, 700);
-  };
-
-  const handleDemoFill = () => {
-    setEmail("admin@glitch.io");
-    setPassword("password");
-    setError(null);
   };
 
   return (
@@ -442,7 +436,7 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="admin@glitch.io"
+                      placeholder="user@enterprise.internal"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="pl-10 h-10 bg-[#060908] border-zinc-800 text-white placeholder:text-zinc-600 focus-visible:ring-emerald-500/50 focus-visible:border-emerald-500/60 rounded-xl transition-all font-sans text-sm"
@@ -457,13 +451,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
                     <Label htmlFor="password" className="text-zinc-300 text-xs font-semibold uppercase tracking-wider font-mono">
                       Password
                     </Label>
-                    <button
-                      type="button"
-                      onClick={handleDemoFill}
-                      className="text-[11px] text-emerald-400 hover:text-emerald-300 transition-colors font-mono hover:underline"
-                    >
-                      [Auto-Fill Demo]
-                    </button>
                   </div>
                   <div className="relative group">
                     <Lock className="absolute left-3.5 top-3 h-4 w-4 text-zinc-500 group-focus-within:text-emerald-400 transition-colors" />
@@ -522,13 +509,6 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               </CardFooter>
             </form>
           </Card>
-
-          {/* Demo Credentials Footer */}
-          <div className="p-3.5 rounded-xl border border-zinc-800 bg-[#060908] text-center text-xs text-zinc-400 font-mono flex items-center justify-center gap-2 shadow-inner">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>DEMO:</span>{" "}
-            <span className="text-emerald-400 font-semibold">admin@glitch.io</span> / <span className="text-zinc-300 font-semibold">password</span>
-          </div>
 
         </div>
       </div>
