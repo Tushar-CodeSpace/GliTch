@@ -38,7 +38,31 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
-  # 2. Build Frontend
+  # 2. Validate Edge Site Agent
+  test-glitch-agent:
+    name: Validate Edge Site Agent
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./services/glitch_agent
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+  # 3. Build Frontend
   build-frontend:
     name: Build React Frontend
     runs-on: ubuntu-latest
@@ -66,7 +90,7 @@ jobs:
   build-and-push-docker:
     name: Build & Push Docker Images to GHCR
     runs-on: ubuntu-latest
-    needs: [test-api-gateway, build-frontend]
+    needs: [test-api-gateway, test-glitch-agent, build-frontend]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
