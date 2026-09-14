@@ -13,15 +13,14 @@ GliTch/
 │   │   ├── main.py           # FastAPI application entry point with CORS and REST routes
 │   │   ├── pyproject.toml    # Python dependencies and metadata managed by uv
 │   │   └── README.md         # API Gateway documentation
-│   ├── frontend/
-│   │   ├── src/
-│   │   │   ├── App.jsx       # Main React UI dashboard component
-│   │   │   ├── main.jsx      # React DOM entry point
-│   │   │   └── index.css     # Global styling, tokens, and layout styles
-│   │   ├── index.html        # HTML entry layout
-│   │   ├── vite.config.js    # Vite configuration and API proxy (/api -> localhost:8000)
-│   │   └── package.json      # Node.js dependencies
-│   └── scraper_agent/
+│   └── frontend/
+│       ├── src/
+│       │   ├── App.jsx       # Main React UI dashboard component
+│       │   ├── main.jsx      # React DOM entry point
+│       │   └── index.css     # Global styling, tokens, and layout styles
+│       ├── index.html        # HTML entry layout
+│       ├── vite.config.js    # Vite configuration and API proxy (/api -> localhost:8000)
+│       └── package.json      # Node.js dependencies
 ├── .gitignore        # Git ignore rules for Python venv, node_modules, build artifacts
 ├── docker-compose.yml# Docker Compose orchestration config
 └── README.md

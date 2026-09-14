@@ -5,7 +5,15 @@ import { useWebSocket } from "@/lib/useWebSocket";
 
 // Modular Page Components
 import { OverviewPage } from "@/components/devops/OverviewPage";
+import { ApplicationsPage } from "@/components/devops/ApplicationsPage";
+import { ClientsPage } from "@/components/devops/ClientsPage";
 import { PipelinePage } from "@/components/devops/PipelinePage";
+import { BuildsPage } from "@/components/devops/BuildsPage";
+import { DeploymentsPage } from "@/components/devops/DeploymentsPage";
+import { QATestsPage } from "@/components/devops/QATestsPage";
+import { MonitoringPage } from "@/components/devops/MonitoringPage";
+import { LogsPage } from "@/components/devops/LogsPage";
+import { ApprovalsPage } from "@/components/devops/ApprovalsPage";
 import { ConfigManagerPage } from "@/components/devops/ConfigManagerPage";
 import { AgentSwarmPage } from "@/components/devops/AgentSwarmPage";
 import { TrafficMonitorPage } from "@/components/devops/TrafficMonitorPage";
@@ -56,8 +64,8 @@ interface ClientAgent {
 
 export function Dashboard({ userEmail, onLogout }: DashboardProps) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [activeTab, setActiveTab] = useState<"overview" | "pipeline" | "configs" | "agents" | "traffic" | "security" | "resources">("overview");
-  
+  const [activeTab, setActiveTab] = useState<string>("overview");
+
   // Real-Time WebSocket Hook
   const {
     isConnected,
@@ -338,12 +346,8 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
   };
 
   return (
-    <div className="min-h-screen bg-[#080b0a] text-zinc-100 flex flex-col selection:bg-emerald-500 selection:text-black">
+    <div className="min-h-screen bg-[#050807] text-zinc-100 flex flex-col selection:bg-emerald-500 selection:text-black font-sans">
       
-      {/* BACKGROUND AMBIENT GLOW */}
-      <div className="fixed top-0 left-1/3 w-[600px] h-[300px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
-      <div className="fixed bottom-0 right-1/4 w-[500px] h-[300px] bg-teal-500/5 rounded-full blur-[140px] pointer-events-none" />
-
       {/* TOP NAVBAR */}
       <Navbar
         isSidebarCollapsed={isSidebarCollapsed}
@@ -373,6 +377,8 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
           setIsSidebarCollapsed={setIsSidebarCollapsed}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          userEmail={userEmail}
+          onLogout={onLogout}
         />
 
         {/* MAIN WORKSPACE VIEW */}
@@ -391,6 +397,10 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
             />
           )}
 
+          {activeTab === "applications" && <ApplicationsPage />}
+
+          {activeTab === "clients" && <ClientsPage />}
+
           {activeTab === "pipeline" && (
             <PipelinePage
               userEmail={userEmail}
@@ -402,6 +412,18 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
               onTriggerDeploy={handleTriggerDeploy}
             />
           )}
+
+          {activeTab === "builds" && <BuildsPage />}
+
+          {activeTab === "deployments" && <DeploymentsPage />}
+
+          {activeTab === "qa" && <QATestsPage />}
+
+          {activeTab === "monitoring" && <MonitoringPage />}
+
+          {activeTab === "logs" && <LogsPage />}
+
+          {activeTab === "approvals" && <ApprovalsPage />}
 
           {activeTab === "configs" && <ConfigManagerPage />}
 
