@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import time
@@ -8,14 +9,26 @@ import httpx
 import asyncio
 import random
 import uuid
+import hashlib
+import zipfile
+import subprocess
+import shutil
+import psutil
 
 from database import db_manager
+
+# Ensure runtime directories exist
+os.makedirs("artifacts", exist_ok=True)
+os.makedirs("workspace/repos", exist_ok=True)
 
 app = FastAPI(
     title="GliTch Central Control Plane API Gateway",
     description="High-performance FastAPI Control Plane Engine managing Applications, Clients, Sites, Pipelines, Builds, Approvals, Deployments, and Edge Agents over WebSockets.",
     version="2.0.0"
 )
+
+# Mount static artifacts server
+app.mount("/artifacts", StaticFiles(directory="artifacts"), name="artifacts")
 
 # Enable CORS for frontend Vite SPA development
 app.add_middleware(
@@ -473,12 +486,53 @@ async def get_builds():
             return docs
     return builds_db
 
+def generate_real_build_zip(app_id: str, app_name: str, version: str) -> tuple[str, str]:
+    """
+    Generates a REAL .zip build package under artifacts/<app_id>/<version>/package.zip,
+    computes exact SHA256 checksum, and returns (relative_storage_path, sha256_hash).
+    """
+    build_dir = os.path.join("artifacts", app_id, version)
+    os.makedirs(build_dir, exist_ok=True)
+    zip_path = os.path.join(build_dir, "package.zip")
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        manifest = {
+            "app_id": app_id,
+            "app_name": app_name,
+            "version": version,
+            "built_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+            "engine": "GliTch Build Engine v2.0"
+        }
+        zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+        zf.writestr("index.js", f"// GliTch Built Service [{app_name} - {version}]\nconsole.log('Service online on port 8080');\n")
+        zf.writestr("config.json", json.dumps({"env": "production", "port": 8080}))
+
+    hasher = hashlib.sha256()
+    with open(zip_path, "rb") as f:
+        while chunk := f.read(8192):
+            hasher.update(chunk)
+    sha256_hash = f"sha256:{hasher.hexdigest()}"
+
+    relative_storage_path = f"artifacts/{app_id}/{version}/package.zip"
+    return relative_storage_path, sha256_hash
+
 @app.post("/api/v1/builds", response_model=Build, status_code=201)
 async def create_build(build_in: BuildCreate):
     app_name = "Application"
     app_match = next((a for a in applications_db if a.id == build_in.application_id), None)
-    if app_match:
+    if not app_match and db_manager.is_connected and db_manager.db is not None:
+        doc = await db_manager.db.applications.find_one({"id": build_in.application_id}, {"_id": 0})
+        if doc:
+            app_name = doc.get("name", "Application")
+    elif app_match:
         app_name = app_match.name
+
+    # Generate REAL ZIP artifact bundle and compute SHA256 checksum
+    storage_path, checksum_sha256 = generate_real_build_zip(
+        app_id=build_in.application_id,
+        app_name=app_name,
+        version=build_in.version
+    )
 
     build_count = len(builds_db) + 1
     new_build = Build(
@@ -489,8 +543,8 @@ async def create_build(build_in: BuildCreate):
         version=build_in.version,
         commit_hash=build_in.commit_hash or uuid.uuid4().hex[:12],
         branch=build_in.branch,
-        checksum_sha256=f"sha256:{uuid.uuid4().hex}",
-        storage_path=f"artifacts/{build_in.application_id}/{build_in.version}/package.zip",
+        checksum_sha256=checksum_sha256,
+        storage_path=storage_path,
         status="READY",
         created_at=time.strftime("%Y-%m-%d %H:%M:%S")
     )
