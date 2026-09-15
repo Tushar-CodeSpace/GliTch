@@ -3,22 +3,21 @@ import asyncio
 from typing import Optional, Dict, Any
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
 import pymongo
+from dotenv import load_dotenv
 
-# Environment Configuration for Amazon DocumentDB
-DOCUMENTDB_URI = os.getenv("DOCUMENTDB_URI", "mongodb://localhost:27017")
-DOCUMENTDB_DB_NAME = os.getenv("DOCUMENTDB_DB_NAME", "glitch_db")
-DOCUMENTDB_TLS_CA_FILE = os.getenv("DOCUMENTDB_TLS_CA_FILE", "global-bundle.pem")
-DOCUMENTDB_ENABLE_TLS = os.getenv("DOCUMENTDB_ENABLE_TLS", "false").lower() in ("true", "1", "yes")
+# Load .env configuration if present
+load_dotenv()
 
-class DocumentDBManager:
+# Environment Configuration for MongoDB Container / Amazon DocumentDB
+MONGO_URI = os.getenv("MONGODB_URI") or os.getenv("DOCUMENTDB_URI") or "mongodb://localhost:27017"
+MONGO_DB_NAME = os.getenv("MONGODB_DB_NAME") or os.getenv("DOCUMENTDB_DB_NAME") or "glitch_db"
+MONGO_TLS_CA_FILE = os.getenv("MONGODB_TLS_CA_FILE") or os.getenv("DOCUMENTDB_TLS_CA_FILE") or "global-bundle.pem"
+MONGO_ENABLE_TLS = (os.getenv("MONGODB_ENABLE_TLS") or os.getenv("DOCUMENTDB_ENABLE_TLS") or "false").lower() in ("true", "1", "yes")
+
+class MongoDBManager:
     """
-    Amazon DocumentDB (MongoDB-compatible) Async Client Manager.
-    Configured specifically for AWS DocumentDB connection options:
-    - tls=True
-    - tlsCAFile=global-bundle.pem
-    - replicaSet='rs0'
-    - readPreference='secondaryPreferred'
-    - retryWrites=False
+    MongoDB / DocumentDB Async Client Manager.
+    Supports local MongoDB containers (port 27017) and optional AWS DocumentDB TLS options.
     """
     def __init__(self):
         self.client: Optional[AsyncIOMotorClient] = None
@@ -31,29 +30,30 @@ class DocumentDBManager:
                 "serverSelectionTimeoutMS": 2500
             }
 
-            if DOCUMENTDB_ENABLE_TLS:
+            if MONGO_ENABLE_TLS:
                 connect_kwargs.update({
                     "tls": True,
-                    "tlsCAFile": DOCUMENTDB_TLS_CA_FILE,
+                    "tlsCAFile": MONGO_TLS_CA_FILE,
                     "replicaSet": "rs0",
                     "readPreference": "secondaryPreferred",
                     "retryWrites": False
                 })
 
-            print(f" Connecting to Amazon DocumentDB at {DOCUMENTDB_URI.split('@')[-1]} (TLS: {DOCUMENTDB_ENABLE_TLS})...")
-            self.client = AsyncIOMotorClient(DOCUMENTDB_URI, **connect_kwargs)
-            self.db = self.client[DOCUMENTDB_DB_NAME]
+            target_host = MONGO_URI.split("@")[-1]
+            print(f" Connecting to MongoDB container / database at {target_host} (TLS: {MONGO_ENABLE_TLS})...")
+            self.client = AsyncIOMotorClient(MONGO_URI, **connect_kwargs)
+            self.db = self.client[MONGO_DB_NAME]
 
             # Ping database to verify connection
             await self.client.admin.command('ping')
             self.is_connected = True
-            print(f" Amazon DocumentDB connection established: Database [{DOCUMENTDB_DB_NAME}].")
+            print(f" MongoDB connection established: Database [{MONGO_DB_NAME}].")
 
             # Create Indexes
             await self._create_indexes()
 
         except Exception as err:
-            print(f" Amazon DocumentDB connection unavailable ({err}). Falling back to active memory mode.")
+            print(f" MongoDB connection unavailable ({err}). Falling back to active memory mode.")
             self.is_connected = False
 
     async def _create_indexes(self):
@@ -73,7 +73,7 @@ class DocumentDBManager:
             await self.db.deployments.create_index([("started_at", pymongo.DESCENDING)])
             # Logs Index
             await self.db.logs.create_index([("timestamp", pymongo.DESCENDING)])
-            print(" Amazon DocumentDB collection indexes initialized.")
+            print(" MongoDB collection indexes initialized.")
         except Exception as index_err:
             print(f" Index initialization warning: {index_err}")
 
@@ -81,6 +81,9 @@ class DocumentDBManager:
         if self.client:
             self.client.close()
             self.is_connected = False
-            print(" Amazon DocumentDB connection closed.")
+            print(" MongoDB connection closed.")
 
-db_manager = DocumentDBManager()
+# Backward-compatible alias
+DocumentDBManager = MongoDBManager
+db_manager = MongoDBManager()
+
