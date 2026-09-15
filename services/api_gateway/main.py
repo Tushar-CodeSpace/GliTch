@@ -43,12 +43,15 @@ class ApplicationCreate(BaseModel):
     repository: str
     default_branch: str = "main"
     technology: str = "Node.js / React"
+    is_private: bool = False
+    repo_username: Optional[str] = None
+    repo_token_or_password: Optional[str] = None
 
 class Application(ApplicationCreate):
     id: str
     status: str = "ACTIVE"
-    clients_count: int = 1
-    last_deployment: str = "Just now"
+    clients_count: int = 0
+    last_deployment: str = "Never"
     created_at: str
 
 class ClientCreate(BaseModel):
@@ -247,82 +250,20 @@ agent_manager = AgentConnectionManager()
 
 
 # ==========================================
-# 3. IN-MEMORY DATA STORES (PRE-POPULATED)
+# 3. IN-MEMORY DATA STORES (CLEAN INITIALIZATION)
 # ==========================================
 
-applications_db: List[Application] = [
-    Application(id="app-001", name="Ecom Pro", repository="github.com/company/ecom-pro", default_branch="main", technology="Node.js / React", status="ACTIVE", clients_count=3, last_deployment="10 mins ago", created_at="2026-01-10 10:00:00"),
-    Application(id="app-002", name="LogTrack", repository="github.com/company/logtrack", default_branch="develop", technology="Python / FastAPI", status="ACTIVE", clients_count=2, last_deployment="2 hours ago", created_at="2026-02-15 11:30:00"),
-    Application(id="app-003", name="RetailApp", repository="github.com/company/retail-app", default_branch="main", technology="Go / React", status="ACTIVE", clients_count=2, last_deployment="1 day ago", created_at="2026-03-01 09:15:00"),
-    Application(id="app-004", name="PharmaSuite", repository="github.com/company/pharmasuite", default_branch="main", technology="Java / Spring Boot", status="ACTIVE", clients_count=1, last_deployment="3 days ago", created_at="2026-04-12 14:20:00")
-]
+applications_db: List[Application] = []
+clients_db: List[Client] = []
+sites_db: List[Site] = []
+pipelines_db: List[Pipeline] = []
+builds_db: List[Build] = []
+approvals_db: List[ApprovalRequest] = []
+deployments_db: List[Deployment] = []
+agents_db: List[Agent] = []
+logs_db: List[LogEntry] = []
 
-clients_db: List[Client] = [
-    Client(id="client-001", name="BlueDart", code="BLUEDART", status="ACTIVE", sites_count=4, applications_count=2, metadata={"region": "APAC"}, created_at="2026-01-01 08:00:00"),
-    Client(id="client-002", name="MedPlus", code="MEDPLUS", status="ACTIVE", sites_count=3, applications_count=3, metadata={"region": "India"}, created_at="2026-01-15 10:00:00"),
-    Client(id="client-003", name="RetailMax", code="RETAILMAX", status="ACTIVE", sites_count=2, applications_count=2, metadata={"region": "US"}, created_at="2026-02-01 12:00:00"),
-    Client(id="client-004", name="EduCare", code="EDUCARE", status="ACTIVE", sites_count=1, applications_count=1, metadata={"region": "Global"}, created_at="2026-03-10 16:45:00")
-]
-
-sites_db: List[Site] = [
-    Site(id="site-001", client_id="client-001", client_name="BlueDart", name="BLR-DC01", code="BLR-01", environment="Production", location="Bangalore, IN", status="ONLINE", services_count=12, cpu_percent=42.0, memory_percent=58.0, created_at="2026-01-02 09:00:00"),
-    Site(id="site-002", client_id="client-001", client_name="BlueDart", name="MUM-DC01", code="MUM-01", environment="Staging", location="Mumbai, IN", status="ONLINE", services_count=8, cpu_percent=28.5, memory_percent=44.0, created_at="2026-01-05 14:00:00"),
-    Site(id="site-003", client_id="client-002", client_name="MedPlus", name="HYD-DC01", code="HYD-01", environment="Production", location="Hyderabad, IN", status="ONLINE", services_count=15, cpu_percent=65.2, memory_percent=72.1, created_at="2026-01-20 11:30:00"),
-    Site(id="site-004", client_id="client-003", client_name="RetailMax", name="US-EAST01", code="USE-01", environment="Production", location="Virginia, US", status="ONLINE", services_count=20, cpu_percent=51.0, memory_percent=62.4, created_at="2026-02-05 15:10:00")
-]
-
-pipelines_db: List[Pipeline] = [
-    Pipeline(id="pipe-001", application_id="app-001", app_name="Ecom Pro", name="Ecom Pro CI/CD", trigger_type="Push", branch_pattern="main", status="Success", last_run="10 mins ago", duration="4m 32s"),
-    Pipeline(id="pipe-002", application_id="app-002", app_name="LogTrack", name="LogTrack Pipeline", trigger_type="Pull Request", branch_pattern="develop", status="Failed", last_run="1 hour ago", duration="6m 12s"),
-    Pipeline(id="pipe-003", application_id="app-003", app_name="RetailApp", name="RetailApp Release", trigger_type="Schedule", branch_pattern="release/*", status="Success", last_run="1 day ago", duration="5m 14s")
-]
-
-builds_db: List[Build] = [
-    Build(id="build-1024", application_id="app-001", app_name="Ecom Pro", build_number="#1024", version="v2.4.1", commit_hash="a1b2c3d4e5f6", branch="main", checksum_sha256="sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", storage_path="artifacts/ecom-pro/v2.4.1/ecom-pro-v2.4.1.zip", status="READY", created_at="2026-09-12 10:20:00"),
-    Build(id="build-1023", application_id="app-002", app_name="LogTrack", build_number="#1023", version="v1.8.0", commit_hash="f4e5d6c7b8a9", branch="develop", checksum_sha256="sha256:8f4e2b1c9a0d3e5f7b8a9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f", storage_path="artifacts/logtrack/v1.8.0/logtrack-v1.8.0.zip", status="READY", created_at="2026-09-12 09:10:00")
-]
-
-approvals_db: List[ApprovalRequest] = [
-    ApprovalRequest(
-        id="#1084",
-        build_id="build-1024",
-        application_id="app-001",
-        app_name="Ecom Pro",
-        client_id="client-001",
-        client_name="BlueDart",
-        title="Deploy v2.4.1 to Production",
-        environment="Production",
-        type="Deployment",
-        version="v2.4.1",
-        requester="johndoe",
-        priority="High",
-        status="Pending",
-        requested_at="12 Sep 2026 10:24 AM",
-        due_by="12 Sep 2026, 02:00 PM",
-        description="This release includes performance improvements, bug fixes, and new features for the checkout flow.",
-        flow_steps=[
-            {"title": "Requested by johndoe", "status": "completed", "subtext": "12 Sep 2026, 10:24 AM"},
-            {"title": "Pending approval (sachin)", "status": "current", "subtext": "Waiting for review"},
-            {"title": "Pending approval (asfak)", "status": "pending"},
-            {"title": "Deploy to Production", "status": "pending"}
-        ]
-    )
-]
-
-deployments_db: List[Deployment] = [
-    Deployment(id="dep-9042", approval_id="#1084", build_id="build-1024", app_name="Ecom Pro", site_id="site-001", client_name="BlueDart", site_name="BLR-DC01", agent_id="agent-01", environment="Production", target_version="v2.4.1", status="Active", strategy="STANDARD", started_at="10 mins ago", completed_at="8 mins ago")
-]
-
-agents_db: List[Agent] = [
-    Agent(id="agent-01", site_id="site-001", site_name="Client Alpha (US-East)", agent_code="agent-01", hostname="edge-blr-01.internal", ip_address="10.0.4.12", version="v2.4.0", status="ONLINE", last_seen="Just now", requests_per_sec=1420),
-    Agent(id="agent-02", site_id="site-002", site_name="Client Beta (EU-West)", agent_code="agent-02", hostname="edge-mum-01.internal", ip_address="10.2.1.88", version="v2.4.0", status="ONLINE", last_seen="Just now", requests_per_sec=980),
-    Agent(id="agent-03", site_id="site-003", site_name="Client Gamma (AP-South)", agent_code="agent-03", hostname="edge-hyd-01.internal", ip_address="10.5.12.3", version="v2.4.0", status="ONLINE", last_seen="Just now", requests_per_sec=2150)
-]
-
-items_db: List[Item] = [
-    Item(id=1, title="FastAPI + uv Backend", description="High-performance Python backend server managed via uv package manager.", category="Backend", created_at=time.strftime("%Y-%m-%d %H:%M:%S"), status="active"),
-    Item(id=2, title="React + Vite Frontend", description="Modern dark mode glassmorphism UI with responsive design & micro-interactions.", category="Frontend", created_at=time.strftime("%Y-%m-%d %H:%M:%S"), status="active")
-]
+items_db: List[Item] = []
 
 
 # ==========================================
@@ -354,8 +295,8 @@ def health_check():
 async def get_applications():
     if db_manager.is_connected and db_manager.db is not None:
         cursor = db_manager.db.applications.find({}, {"_id": 0})
-        docs = await cursor.to_list(length=100)
-        if docs:
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
             return docs
     return applications_db
 
@@ -367,13 +308,17 @@ async def create_application(app_in: ApplicationCreate):
         repository=app_in.repository,
         default_branch=app_in.default_branch,
         technology=app_in.technology,
+        is_private=app_in.is_private,
+        repo_username=app_in.repo_username,
+        repo_token_or_password=app_in.repo_token_or_password,
         status="ACTIVE",
+        clients_count=0,
+        last_deployment="Never",
         created_at=time.strftime("%Y-%m-%d %H:%M:%S")
     )
     if db_manager.is_connected and db_manager.db is not None:
         await db_manager.db.applications.insert_one(new_app.model_dump())
-    else:
-        applications_db.append(new_app)
+    applications_db.append(new_app)
 
     await telemetry_manager.broadcast({"type": "application_created", "application": new_app.model_dump()})
     return new_app
@@ -381,12 +326,20 @@ async def create_application(app_in: ApplicationCreate):
 @app.delete("/api/v1/applications/{app_id}")
 async def delete_application(app_id: str):
     global applications_db
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.applications.delete_one({"id": app_id})
     applications_db = [a for a in applications_db if a.id != app_id]
+    await telemetry_manager.broadcast({"type": "application_deleted", "application_id": app_id})
     return {"message": f"Application {app_id} deleted successfully"}
 
 # --- CLIENTS & SITES ---
 @app.get("/api/v1/clients", response_model=List[Client])
-def get_clients():
+async def get_clients():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.clients.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return clients_db
 
 @app.post("/api/v1/clients", response_model=Client, status_code=201)
@@ -396,27 +349,114 @@ async def create_client(client_in: ClientCreate):
         name=client_in.name,
         code=client_in.code.upper(),
         status="ACTIVE",
+        sites_count=0,
+        applications_count=0,
+        metadata={},
         created_at=time.strftime("%Y-%m-%d %H:%M:%S")
     )
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.clients.insert_one(new_client.model_dump())
     clients_db.append(new_client)
+    await telemetry_manager.broadcast({"type": "client_created", "client": new_client.model_dump()})
     return new_client
 
+@app.delete("/api/v1/clients/{client_id}")
+async def delete_client(client_id: str):
+    global clients_db
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.clients.delete_one({"id": client_id})
+    clients_db = [c for c in clients_db if c.id != client_id]
+    await telemetry_manager.broadcast({"type": "client_deleted", "client_id": client_id})
+    return {"message": f"Client {client_id} deleted successfully"}
+
 @app.get("/api/v1/sites", response_model=List[Site])
-def get_sites():
+async def get_sites():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.sites.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return sites_db
+
+@app.post("/api/v1/sites", response_model=Site, status_code=201)
+async def create_site(site_in: SiteCreate):
+    # Retrieve client name if available
+    client_name = "Unknown Client"
+    client_match = next((c for c in clients_db if c.id == site_in.client_id), None)
+    if client_match:
+        client_name = client_match.name
+
+    new_site = Site(
+        id=f"site-{uuid.uuid4().hex[:6]}",
+        client_id=site_in.client_id,
+        client_name=client_name,
+        name=site_in.name,
+        code=site_in.code.upper(),
+        environment=site_in.environment,
+        location=site_in.location,
+        status="ONLINE",
+        services_count=1,
+        cpu_percent=12.5,
+        memory_percent=34.0,
+        created_at=time.strftime("%Y-%m-%d %H:%M:%S")
+    )
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.sites.insert_one(new_site.model_dump())
+    sites_db.append(new_site)
+    await telemetry_manager.broadcast({"type": "site_created", "site": new_site.model_dump()})
+    return new_site
 
 # --- PIPELINES & BUILDS ---
 @app.get("/api/v1/pipelines", response_model=List[Pipeline])
-def get_pipelines():
+async def get_pipelines():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.pipelines.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return pipelines_db
+
+@app.post("/api/v1/pipelines", response_model=Pipeline, status_code=201)
+async def create_pipeline(pipe_in: PipelineCreate):
+    app_name = "Application"
+    app_match = next((a for a in applications_db if a.id == pipe_in.application_id), None)
+    if app_match:
+        app_name = app_match.name
+
+    new_pipe = Pipeline(
+        id=f"pipe-{uuid.uuid4().hex[:6]}",
+        application_id=pipe_in.application_id,
+        app_name=app_name,
+        name=pipe_in.name,
+        trigger_type=pipe_in.trigger_type,
+        branch_pattern=pipe_in.branch_pattern,
+        status="Idle",
+        last_run="Never",
+        duration="-"
+    )
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.pipelines.insert_one(new_pipe.model_dump())
+    pipelines_db.append(new_pipe)
+    await telemetry_manager.broadcast({"type": "pipeline_created", "pipeline": new_pipe.model_dump()})
+    return new_pipe
 
 @app.post("/api/v1/pipelines/{pipeline_id}/run")
 async def run_pipeline(pipeline_id: str):
     pipe = next((p for p in pipelines_db if p.id == pipeline_id), None)
+    if not pipe and db_manager.is_connected and db_manager.db is not None:
+        doc = await db_manager.db.pipelines.find_one({"id": pipeline_id}, {"_id": 0})
+        if doc:
+            pipe = Pipeline(**doc)
+
     if not pipe:
         raise HTTPException(status_code=404, detail="Pipeline not found")
+
     pipe.status = "In Progress"
     pipe.last_run = "Just now"
+
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.pipelines.update_one({"id": pipeline_id}, {"$set": {"status": "In Progress", "last_run": "Just now"}})
+
     await telemetry_manager.broadcast({
         "type": "pipeline_started",
         "pipeline_id": pipeline_id,
@@ -425,8 +465,40 @@ async def run_pipeline(pipeline_id: str):
     return {"message": f"Pipeline {pipe.name} execution triggered", "status": "In Progress"}
 
 @app.get("/api/v1/builds", response_model=List[Build])
-def get_builds():
+async def get_builds():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.builds.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return builds_db
+
+@app.post("/api/v1/builds", response_model=Build, status_code=201)
+async def create_build(build_in: BuildCreate):
+    app_name = "Application"
+    app_match = next((a for a in applications_db if a.id == build_in.application_id), None)
+    if app_match:
+        app_name = app_match.name
+
+    build_count = len(builds_db) + 1
+    new_build = Build(
+        id=f"build-{uuid.uuid4().hex[:6]}",
+        application_id=build_in.application_id,
+        app_name=app_name,
+        build_number=f"#{1000 + build_count}",
+        version=build_in.version,
+        commit_hash=build_in.commit_hash or uuid.uuid4().hex[:12],
+        branch=build_in.branch,
+        checksum_sha256=f"sha256:{uuid.uuid4().hex}",
+        storage_path=f"artifacts/{build_in.application_id}/{build_in.version}/package.zip",
+        status="READY",
+        created_at=time.strftime("%Y-%m-%d %H:%M:%S")
+    )
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.builds.insert_one(new_build.model_dump())
+    builds_db.insert(0, new_build)
+    await telemetry_manager.broadcast({"type": "build_created", "build": new_build.model_dump()})
+    return new_build
 
 # --- QA WEBHOOK ---
 @app.post("/api/v1/qa/webhook")
@@ -436,20 +508,30 @@ async def qa_webhook(payload: QAWebhookPayload):
         "payload": payload.model_dump(),
         "timestamp": time.strftime("%H:%M:%S")
     }
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.qa_tests.insert_one(payload.model_dump())
     await telemetry_manager.broadcast(event)
     return {"status": "received", "test_run_id": payload.test_run_id}
 
 # --- APPROVALS ---
 @app.get("/api/v1/approvals", response_model=List[ApprovalRequest])
-def get_approvals():
+async def get_approvals():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.approvals.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return approvals_db
 
 @app.post("/api/v1/approvals/{approval_id}/approve")
 async def approve_request(approval_id: str, req: ApprovalActionRequest):
     appr = next((a for a in approvals_db if a.id == approval_id), None)
-    if not appr:
-        raise HTTPException(status_code=404, detail="Approval request not found")
-    appr.status = "Approved"
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.approvals.update_one({"id": approval_id}, {"$set": {"status": "Approved"}})
+
+    if appr:
+        appr.status = "Approved"
+
     event = {
         "type": "approval_granted",
         "approval_id": approval_id,
@@ -459,7 +541,7 @@ async def approve_request(approval_id: str, req: ApprovalActionRequest):
             "id": f"log-{int(time.time() * 1000)}",
             "time": "Just now",
             "type": "approval",
-            "title": f"Approval Granted for {appr.title}",
+            "title": f"Approval Granted for {approval_id}",
             "status": "approved",
             "details": f"Approval granted by {req.user_email}."
         }
@@ -470,9 +552,12 @@ async def approve_request(approval_id: str, req: ApprovalActionRequest):
 @app.post("/api/v1/approvals/{approval_id}/reject")
 async def reject_request(approval_id: str, req: ApprovalActionRequest):
     appr = next((a for a in approvals_db if a.id == approval_id), None)
-    if not appr:
-        raise HTTPException(status_code=404, detail="Approval request not found")
-    appr.status = "Rejected"
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.approvals.update_one({"id": approval_id}, {"$set": {"status": "Rejected"}})
+
+    if appr:
+        appr.status = "Rejected"
+
     await telemetry_manager.broadcast({
         "type": "approval_rejected",
         "approval_id": approval_id,
@@ -482,28 +567,41 @@ async def reject_request(approval_id: str, req: ApprovalActionRequest):
 
 # --- DEPLOYMENTS ---
 @app.get("/api/v1/deployments", response_model=List[Deployment])
-def get_deployments():
+async def get_deployments():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.deployments.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return deployments_db
 
 @app.post("/api/v1/deployments", response_model=Deployment, status_code=201)
 async def trigger_deployment(dep_in: DeploymentCreate):
-    bld = next((b for b in builds_db if b.id == dep_in.build_id), builds_db[0])
-    ste = next((s for s in sites_db if s.id == dep_in.site_id), sites_db[0])
-    
+    bld = next((b for b in builds_db if b.id == dep_in.build_id), None)
+    ste = next((s for s in sites_db if s.id == dep_in.site_id), None)
+
+    app_name = bld.app_name if bld else "Application"
+    target_version = bld.version if bld else "v1.0.0"
+    client_name = ste.client_name if ste else "Client"
+    site_name = ste.name if ste else "Site"
+
     new_dep = Deployment(
         id=f"dep-{uuid.uuid4().hex[:6]}",
-        build_id=bld.id,
-        app_name=bld.app_name,
-        site_id=ste.id,
-        client_name=ste.client_name,
-        site_name=ste.name,
+        build_id=dep_in.build_id,
+        app_name=app_name,
+        site_id=dep_in.site_id,
+        client_name=client_name,
+        site_name=site_name,
         agent_id="agent-01",
         environment=dep_in.environment,
-        target_version=bld.version,
+        target_version=target_version,
         status="In Progress",
         strategy=dep_in.strategy,
         started_at="Just now"
     )
+
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.deployments.insert_one(new_dep.model_dump())
     deployments_db.insert(0, new_dep)
 
     # Issue rollout command to agent over WebSocket if connected
@@ -511,11 +609,11 @@ async def trigger_deployment(dep_in: DeploymentCreate):
         "event": "agent.command.deploy",
         "deploymentId": new_dep.id,
         "payload": {
-            "application": bld.app_name,
-            "version": bld.version,
-            "artifactUrl": f"http://127.0.0.1:8000/{bld.storage_path}",
-            "checksum": bld.checksum_sha256,
-            "siteId": ste.code
+            "application": app_name,
+            "version": target_version,
+            "artifactUrl": f"http://127.0.0.1:8000/artifacts/{new_dep.id}/package.zip",
+            "checksum": f"sha256:{uuid.uuid4().hex}",
+            "siteId": dep_in.site_id
         }
     })
 
@@ -525,22 +623,16 @@ async def trigger_deployment(dep_in: DeploymentCreate):
     })
     return new_dep
 
-@app.post("/api/v1/deployments/{dep_id}/rollback")
-async def rollback_deployment(dep_id: str):
-    dep = next((d for d in deployments_db if d.id == dep_id), None)
-    if not dep:
-        raise HTTPException(status_code=404, detail="Deployment not found")
-    dep.status = "In Progress"
-    await telemetry_manager.broadcast({
-        "type": "deployment_rollback_started",
-        "deployment_id": dep_id
-    })
-    return {"message": f"Rollback initiated for deployment {dep_id}", "status": "In Progress"}
-
 # --- AGENTS ---
 @app.get("/api/v1/agents", response_model=List[Agent])
-def get_agents():
+async def get_agents():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.agents.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=200)
+        if docs is not None:
+            return docs
     return agents_db
+
 
 # --- BACKWARD COMPATIBILITY ENDPOINTS ---
 @app.get("/api/items", response_model=List[Item])
