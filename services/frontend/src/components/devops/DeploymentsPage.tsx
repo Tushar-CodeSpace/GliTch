@@ -9,7 +9,9 @@ import {
   Trash2, 
   X,
   Loader2,
-  Box
+  RotateCcw,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
 
 interface DeploymentItem {
@@ -33,7 +35,12 @@ export function DeploymentsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Form State
+  // Rollback Modal State
+  const [rollbackTarget, setRollbackTarget] = useState<DeploymentItem | null>(null);
+  const [rollbackReason, setRollbackReason] = useState("");
+  const [isRollingBack, setIsRollingBack] = useState(false);
+
+  // Form State for new deployment
   const [formData, setFormData] = useState({
     build_id: "build-1024",
     site_id: "site-001",
@@ -58,6 +65,34 @@ export function DeploymentsPage() {
 
   useEffect(() => {
     fetchDeployments();
+
+    // Listen for live deployment & rollback updates via WebSocket
+    const ws = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "deployment_triggered" || data.type === "deployment_updated") {
+          fetchDeployments();
+        } else if (data.type === "agent_rollback_progress") {
+          const payload = data.payload || {};
+          const depId = payload.deploymentId;
+          const stage = payload.stage;
+          setDeployments((prev) =>
+            prev.map((d) =>
+              d.id === depId
+                ? { ...d, status: stage === "SUCCESS" ? "Rolled Back" : `Rolling Back (${stage})` }
+                : d
+            )
+          );
+        }
+      } catch (e) {
+        console.error("WS error in DeploymentsPage:", e);
+      }
+    };
+
+    return () => {
+      ws.close();
+    };
   }, []);
 
   const handleTriggerDeployment = async (e: React.FormEvent) => {
@@ -81,6 +116,30 @@ export function DeploymentsPage() {
     }
   };
 
+  const handleExecuteRollback = async () => {
+    if (!rollbackTarget) return;
+    try {
+      setIsRollingBack(true);
+      const res = await fetch(`http://127.0.0.1:8000/api/v1/deployments/${rollbackTarget.id}/rollback`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: rollbackReason || "Operator initiated rollback" })
+      });
+
+      if (res.ok) {
+        setDeployments((prev) =>
+          prev.map((d) => (d.id === rollbackTarget.id ? { ...d, status: "Rolling Back" } : d))
+        );
+        setRollbackTarget(null);
+        setRollbackReason("");
+      }
+    } catch (err) {
+      console.error("Error triggering rollback:", err);
+    } finally {
+      setIsRollingBack(false);
+    }
+  };
+
   const filteredDeployments = deployments.filter(d => 
     d.app_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     d.client_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -95,10 +154,10 @@ export function DeploymentsPage() {
         <div>
           <div className="flex items-center gap-2">
             <Rocket className="w-6 h-6 text-emerald-400" />
-            <h2 className="text-xl font-bold text-white tracking-tight">Deployments</h2>
+            <h2 className="text-xl font-bold text-white tracking-tight">Deployments & Automated Rollbacks</h2>
           </div>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Active Edge agent rollouts, deployment strategies, and site release management.
+            Active Edge agent rollouts, deployment strategies, zero-downtime swaps, and automated version rollbacks.
           </p>
         </div>
 
@@ -167,9 +226,13 @@ export function DeploymentsPage() {
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="text-sm font-bold text-white">{dep.app_name} ({dep.target_version})</h3>
-                  <span className="text-[10px] font-mono text-zinc-500">{dep.id} &bull; Site: {dep.site_name}</span>
+                  <span className="text-[10px] font-mono text-zinc-500">{dep.id} &bull; Site: {dep.site_name} &bull; Agent: {dep.agent_id}</span>
                 </div>
-                <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                  dep.status.includes("Rolled Back") ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" :
+                  dep.status.includes("Rolling Back") ? "bg-rose-500/10 text-rose-400 border border-rose-500/30 animate-pulse" :
+                  "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                }`}>
                   {dep.status}
                 </span>
               </div>
@@ -188,8 +251,78 @@ export function DeploymentsPage() {
                   <span className="text-zinc-400">{dep.started_at}</span>
                 </div>
               </div>
+
+              {/* ACTION FOOTER */}
+              <div className="pt-2 border-t border-zinc-900 flex items-center justify-between text-xs">
+                <span className="text-zinc-500 text-[11px] font-mono">Strategy: {dep.strategy}</span>
+                <Button
+                  onClick={() => setRollbackTarget(dep)}
+                  disabled={dep.status.includes("Rolling Back")}
+                  className="h-8 px-3 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 font-bold text-xs rounded-lg transition-all flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Trigger Rollback
+                </Button>
+              </div>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* ROLLBACK CONFIRMATION MODAL */}
+      {rollbackTarget && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-[#090d0b] border-amber-500/30 rounded-2xl p-6 space-y-4 shadow-2xl relative font-mono text-xs">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-amber-400 flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5" />
+                Confirm Deployment Rollback
+              </h3>
+              <button onClick={() => setRollbackTarget(null)} className="text-zinc-500 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-zinc-300">
+              <p>
+                Target Application: <span className="text-white font-bold">{rollbackTarget.app_name} ({rollbackTarget.target_version})</span>
+              </p>
+              <p>
+                Edge Agent: <span className="text-emerald-400 font-bold">{rollbackTarget.agent_id}</span> ({rollbackTarget.site_name})
+              </p>
+              <p className="text-zinc-400 text-[11px] leading-relaxed font-sans pt-1">
+                Triggering rollback will instruct the edge agent to restore the previous backup snapshot from local storage and swap application processes with zero downtime.
+              </p>
+            </div>
+
+            <div className="space-y-1.5 font-sans">
+              <label className="text-zinc-300 font-semibold text-xs">Rollback Reason / Comment</label>
+              <Input
+                placeholder="e.g., Performance degradation detected in QA"
+                value={rollbackReason}
+                onChange={(e) => setRollbackReason(e.target.value)}
+                className="bg-[#060908] border-zinc-800 text-white rounded-xl text-xs h-10"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setRollbackTarget(null)}
+                className="h-9 text-xs border-zinc-800 text-zinc-400 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleExecuteRollback}
+                disabled={isRollingBack}
+                className="h-9 px-4 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs rounded-xl flex items-center gap-1.5"
+              >
+                {isRollingBack ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                Confirm Rollback
+              </Button>
+            </div>
+          </Card>
         </div>
       )}
 

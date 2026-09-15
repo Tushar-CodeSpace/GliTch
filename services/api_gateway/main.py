@@ -21,10 +21,19 @@ from database import db_manager
 os.makedirs("artifacts", exist_ok=True)
 os.makedirs("workspace/repos", exist_ok=True)
 
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await db_manager.connect()
+    yield
+    await db_manager.close()
+
 app = FastAPI(
     title="GliTch Central Control Plane API Gateway",
     description="High-performance FastAPI Control Plane Engine managing Applications, Clients, Sites, Pipelines, Builds, Approvals, Deployments, and Edge Agents over WebSockets.",
-    version="2.0.0"
+    version="2.0.0",
+    lifespan=lifespan
 )
 
 # Mount static artifacts server
@@ -38,14 +47,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-@app.on_event("startup")
-async def startup_db():
-    await db_manager.connect()
-
-@app.on_event("shutdown")
-async def shutdown_db():
-    await db_manager.close()
 
 # ==========================================
 # 1. PYDANTIC SCHEMAS (CORE ENTITIES)
@@ -207,6 +208,13 @@ class LogEntry(BaseModel):
 class PipelineApproveRequest(BaseModel):
     user_email: str
 
+class AgentExecRequest(BaseModel):
+    command: str
+
+class RollbackRequest(BaseModel):
+    reason: Optional[str] = "Manual operator rollback requested"
+    target_version: Optional[str] = None
+
 class ItemCreate(BaseModel):
     title: str
     description: str
@@ -254,9 +262,15 @@ class AgentConnectionManager:
         if agent_id in self.active_agent_connections:
             del self.active_agent_connections[agent_id]
 
-    async def send_command(self, agent_id: str, command: dict):
+    async def send_command(self, agent_id: str, command: dict) -> bool:
         if agent_id in self.active_agent_connections:
-            await self.active_agent_connections[agent_id].send_json(command)
+            try:
+                await self.active_agent_connections[agent_id].send_json(command)
+                return True
+            except Exception:
+                self.disconnect(agent_id)
+                return False
+        return False
 
 telemetry_manager = TelemetryConnectionManager()
 agent_manager = AgentConnectionManager()
@@ -486,26 +500,109 @@ async def get_builds():
             return docs
     return builds_db
 
-def generate_real_build_zip(app_id: str, app_name: str, version: str) -> tuple[str, str]:
+def build_auth_git_url(repo_url: str, is_private: bool, username: Optional[str], token: Optional[str]) -> str:
+    if not is_private or not token:
+        return repo_url
+    
+    if repo_url.startswith("https://"):
+        user_pass = f"{username}:{token}@" if username else f"{token}@"
+        return "https://" + user_pass + repo_url[8:]
+    elif repo_url.startswith("http://"):
+        user_pass = f"{username}:{token}@" if username else f"{token}@"
+        return "http://" + user_pass + repo_url[7:]
+    return repo_url
+
+def clone_and_package_repo(
+    app_id: str,
+    app_name: str,
+    version: str,
+    repo_url: Optional[str],
+    branch: str = "main",
+    is_private: bool = False,
+    username: Optional[str] = None,
+    token: Optional[str] = None
+) -> tuple[str, str, str, str]:
     """
-    Generates a REAL .zip build package under artifacts/<app_id>/<version>/package.zip,
-    computes exact SHA256 checksum, and returns (relative_storage_path, sha256_hash).
+    Clones a public or private Git repository, extracts commit metadata,
+    zips the cloned source code into artifacts/<app_id>/<version>/package.zip,
+    and returns (relative_storage_path, sha256_hash, commit_hash, log_summary).
     """
+    import json
     build_dir = os.path.join("artifacts", app_id, version)
     os.makedirs(build_dir, exist_ok=True)
     zip_path = os.path.join(build_dir, "package.zip")
+    
+    commit_hash = ""
+    log_summary = ""
+    cloned_successfully = False
 
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        manifest = {
-            "app_id": app_id,
-            "app_name": app_name,
-            "version": version,
-            "built_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-            "engine": "GliTch Build Engine v2.0"
-        }
-        zf.writestr("manifest.json", json.dumps(manifest, indent=2))
-        zf.writestr("index.js", f"// GliTch Built Service [{app_name} - {version}]\nconsole.log('Service online on port 8080');\n")
-        zf.writestr("config.json", json.dumps({"env": "production", "port": 8080}))
+    if repo_url and repo_url.strip():
+        auth_url = build_auth_git_url(repo_url.strip(), is_private, username, token)
+        temp_clone_dir = os.path.join("workspace", "repos", f"{app_id}_{uuid.uuid4().hex[:6]}")
+        
+        try:
+            clone_cmd = ["git", "clone", "--depth", "1", "--branch", branch, auth_url, temp_clone_dir]
+            result = subprocess.run(clone_cmd, capture_output=True, text=True, timeout=60)
+            
+            if result.returncode != 0 and branch not in ("main", "master"):
+                fallback_cmd = ["git", "clone", "--depth", "1", auth_url, temp_clone_dir]
+                result = subprocess.run(fallback_cmd, capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                cloned_successfully = True
+                rev_res = subprocess.run(["git", "rev-parse", "HEAD"], cwd=temp_clone_dir, capture_output=True, text=True)
+                if rev_res.returncode == 0:
+                    commit_hash = rev_res.stdout.strip()[:12]
+                
+                msg_res = subprocess.run(["git", "log", "-1", "--pretty=format:%s"], cwd=temp_clone_dir, capture_output=True, text=True)
+                if msg_res.returncode == 0:
+                    log_summary = msg_res.stdout.strip()
+
+                with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                    manifest = {
+                        "app_id": app_id,
+                        "app_name": app_name,
+                        "version": version,
+                        "repo_url": repo_url,
+                        "branch": branch,
+                        "commit_hash": commit_hash,
+                        "commit_msg": log_summary,
+                        "built_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "engine": "GliTch Real Git Build Engine v2.0"
+                    }
+                    zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+
+                    for root, dirs, files in os.walk(temp_clone_dir):
+                        dirs[:] = [d for d in dirs if d not in (".git", "__pycache__", "node_modules", ".venv")]
+                        for file in files:
+                            abs_file = os.path.join(root, file)
+                            rel_file = os.path.relpath(abs_file, temp_clone_dir)
+                            zf.write(abs_file, rel_file)
+
+                shutil.rmtree(temp_clone_dir, ignore_errors=True)
+            else:
+                log_summary = f"Git clone failed: {result.stderr.strip()[:200]}"
+                if os.path.exists(temp_clone_dir):
+                    shutil.rmtree(temp_clone_dir, ignore_errors=True)
+        except Exception as e:
+            log_summary = f"Git exception: {str(e)}"
+            if 'temp_clone_dir' in locals() and os.path.exists(temp_clone_dir):
+                shutil.rmtree(temp_clone_dir, ignore_errors=True)
+
+    if not cloned_successfully:
+        import json
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            manifest = {
+                "app_id": app_id,
+                "app_name": app_name,
+                "version": version,
+                "built_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+                "engine": "GliTch Build Engine v2.0 (Standalone)",
+                "note": log_summary or "Standalone bundle package"
+            }
+            zf.writestr("manifest.json", json.dumps(manifest, indent=2))
+            zf.writestr("index.js", f"// GliTch Built Service [{app_name} - {version}]\nconsole.log('Service online on port 8080');\n")
+            zf.writestr("config.json", json.dumps({"env": "production", "port": 8080}))
 
     hasher = hashlib.sha256()
     with open(zip_path, "rb") as f:
@@ -514,26 +611,39 @@ def generate_real_build_zip(app_id: str, app_name: str, version: str) -> tuple[s
     sha256_hash = f"sha256:{hasher.hexdigest()}"
 
     relative_storage_path = f"artifacts/{app_id}/{version}/package.zip"
-    return relative_storage_path, sha256_hash
+    return relative_storage_path, sha256_hash, commit_hash, log_summary
 
 @app.post("/api/v1/builds", response_model=Build, status_code=201)
 async def create_build(build_in: BuildCreate):
     app_name = "Application"
+    app_doc = None
     app_match = next((a for a in applications_db if a.id == build_in.application_id), None)
     if not app_match and db_manager.is_connected and db_manager.db is not None:
         doc = await db_manager.db.applications.find_one({"id": build_in.application_id}, {"_id": 0})
         if doc:
             app_name = doc.get("name", "Application")
+            app_doc = doc
     elif app_match:
         app_name = app_match.name
+        app_doc = app_match.model_dump()
 
-    # Generate REAL ZIP artifact bundle and compute SHA256 checksum
-    storage_path, checksum_sha256 = generate_real_build_zip(
+    repo_url = app_doc.get("repository") if app_doc else None
+    is_private = app_doc.get("is_private", False) if app_doc else False
+    username = app_doc.get("repo_username") if app_doc else None
+    token = app_doc.get("repo_token_or_password") if app_doc else None
+
+    storage_path, checksum_sha256, git_commit_hash, log_summary = clone_and_package_repo(
         app_id=build_in.application_id,
         app_name=app_name,
-        version=build_in.version
+        version=build_in.version,
+        repo_url=repo_url,
+        branch=build_in.branch or "main",
+        is_private=is_private,
+        username=username,
+        token=token
     )
 
+    commit_hash = build_in.commit_hash or git_commit_hash or uuid.uuid4().hex[:12]
     build_count = len(builds_db) + 1
     new_build = Build(
         id=f"build-{uuid.uuid4().hex[:6]}",
@@ -541,16 +651,39 @@ async def create_build(build_in: BuildCreate):
         app_name=app_name,
         build_number=f"#{1000 + build_count}",
         version=build_in.version,
-        commit_hash=build_in.commit_hash or uuid.uuid4().hex[:12],
+        commit_hash=commit_hash,
         branch=build_in.branch,
         checksum_sha256=checksum_sha256,
         storage_path=storage_path,
         status="READY",
         created_at=time.strftime("%Y-%m-%d %H:%M:%S")
     )
+
+    log_entry = {
+        "id": f"log-{uuid.uuid4().hex[:6]}",
+        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "level": "INFO" if "failed" not in (log_summary or "").lower() else "WARN",
+        "source": "BUILD_ENGINE",
+        "service": app_name,
+        "message": f"Build {new_build.build_number} ({new_build.version}) packaged from Git. Checksum: {checksum_sha256[:16]}... Details: {log_summary or 'Repository checkout successful.'}",
+        "environment": "Production",
+        "host": "glitch-control-plane",
+        "requestId": f"req_{uuid.uuid4().hex[:6]}",
+        "jsonDetails": {
+            "build_id": new_build.id,
+            "commit": commit_hash,
+            "sha256": checksum_sha256,
+            "storage_path": storage_path
+        }
+    }
+
     if db_manager.is_connected and db_manager.db is not None:
         await db_manager.db.builds.insert_one(new_build.model_dump())
+        await db_manager.db.logs.insert_one(log_entry)
+
     builds_db.insert(0, new_build)
+    logs_db.insert(0, LogEntry(**log_entry))
+
     await telemetry_manager.broadcast({"type": "build_created", "build": new_build.model_dump()})
     return new_build
 
@@ -677,7 +810,7 @@ async def trigger_deployment(dep_in: DeploymentCreate):
     })
     return new_dep
 
-# --- AGENTS ---
+# --- AGENTS & REMOTE EXEC ---
 @app.get("/api/v1/agents", response_model=List[Agent])
 async def get_agents():
     if db_manager.is_connected and db_manager.db is not None:
@@ -686,6 +819,83 @@ async def get_agents():
         if docs is not None:
             return docs
     return agents_db
+
+@app.post("/api/v1/agents/{agent_id}/exec")
+async def execute_agent_command(agent_id: str, req: AgentExecRequest):
+    exec_id = f"exec-{uuid.uuid4().hex[:6]}"
+    cmd_data = {
+        "event": "agent.command.exec",
+        "execId": exec_id,
+        "command": req.command,
+        "timestamp": time.time()
+    }
+    sent = await agent_manager.send_command(agent_id, cmd_data)
+    log_entry = LogEntry(
+        id=f"log-{int(time.time() * 1000)}",
+        timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+        level="INFO" if sent else "WARN",
+        source="AGENT_HOST",
+        service="GliTch Remote Exec Engine",
+        message=f"Remote command dispatched to agent {agent_id}: '{req.command}' (Sent: {sent})"
+    )
+    logs_db.append(log_entry)
+    await telemetry_manager.broadcast({"type": "log_entry", "log": log_entry.model_dump()})
+
+    return {
+        "exec_id": exec_id,
+        "agent_id": agent_id,
+        "command": req.command,
+        "sent": sent,
+        "status": "DISPATCHED" if sent else "AGENT_OFFLINE",
+        "message": "Command dispatched over WebSocket" if sent else "Agent offline or disconnected"
+    }
+
+@app.post("/api/v1/deployments/{deployment_id}/rollback")
+async def rollback_deployment(deployment_id: str, req: Optional[RollbackRequest] = None):
+    dep = next((d for d in deployments_db if d.id == deployment_id), None)
+    if not dep and db_manager.is_connected and db_manager.db is not None:
+        doc = await db_manager.db.deployments.find_one({"id": deployment_id}, {"_id": 0})
+        if doc:
+            dep = Deployment(**doc)
+
+    if not dep:
+        raise HTTPException(status_code=404, detail=f"Deployment {deployment_id} not found")
+
+    rollback_id = f"rollback-{uuid.uuid4().hex[:6]}"
+    dep.status = "Rolling Back"
+
+    cmd_payload = {
+        "event": "agent.command.rollback",
+        "rollbackId": rollback_id,
+        "deploymentId": deployment_id,
+        "payload": {
+            "application": dep.app_name,
+            "version": dep.target_version,
+            "reason": req.reason if req else "Manual operator rollback"
+        }
+    }
+
+    sent = await agent_manager.send_command(dep.agent_id, cmd_payload)
+
+    log_entry = LogEntry(
+        id=f"log-{int(time.time() * 1000)}",
+        timestamp=time.strftime("%Y-%m-%d %H:%M:%S"),
+        level="WARN",
+        source="CONTROL_PLANE",
+        service="GliTch Rollback Engine",
+        message=f"Rollback requested for deployment {deployment_id} ({dep.app_name}) on agent {dep.agent_id}."
+    )
+    logs_db.append(log_entry)
+    await telemetry_manager.broadcast({"type": "deployment_updated", "deployment": dep.model_dump()})
+    await telemetry_manager.broadcast({"type": "log_entry", "log": log_entry.model_dump()})
+
+    return {
+        "rollback_id": rollback_id,
+        "deployment_id": deployment_id,
+        "agent_id": dep.agent_id,
+        "status": "ROLLBACK_DISPATCHED" if sent else "ROLLBACK_QUEUED",
+        "sent_over_websocket": sent
+    }
 
 
 # --- BACKWARD COMPATIBILITY ENDPOINTS ---
@@ -754,9 +964,32 @@ async def websocket_agent_endpoint(websocket: WebSocket):
             if event_type == "agent.ping":
                 await websocket.send_json({"event": "agent.pong", "timestamp": time.time()})
             elif event_type == "agent.telemetry.progress":
-                # Forward agent progress stream to central UI
                 await telemetry_manager.broadcast({
                     "type": "agent_progress_update",
+                    "agent_id": agent_id,
+                    "payload": data
+                })
+            elif event_type == "agent.exec.response":
+                await telemetry_manager.broadcast({
+                    "type": "agent_exec_response",
+                    "agent_id": agent_id,
+                    "payload": data
+                })
+            elif event_type == "agent.rollback.progress":
+                # Update deployment status if rollback completed
+                if data.get("status") == "SUCCESS":
+                    dep_id = data.get("deploymentId")
+                    for d in deployments_db:
+                        if d.id == dep_id:
+                            d.status = "Rolled Back"
+                await telemetry_manager.broadcast({
+                    "type": "agent_rollback_progress",
+                    "agent_id": agent_id,
+                    "payload": data
+                })
+            elif event_type == "agent.log.stream":
+                await telemetry_manager.broadcast({
+                    "type": "agent_log_stream",
                     "agent_id": agent_id,
                     "payload": data
                 })

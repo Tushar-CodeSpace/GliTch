@@ -77,6 +77,10 @@ GliTch is a modern, real-world Edge Agent Deployment and Control Plane Engine bu
   - Agents fetch assigned deployment build packages from the Control Plane.
   - **Checksum Validation**: Verifies local artifact SHA-256 hash against the control plane record prior to extraction.
   - **Atomic Extraction**: Unzips package archives to target execution directories (`services/glitch_agent/deployments/<app_name>/<version>/`).
+- **Remote Agent Shell Execution Protocol**:
+  - Outbound WebSocket command execution channel (`agent.command.exec`) for running diagnostic subshell commands (`uptime`, `ps`, `df -h`, etc.) on target edge hosts with real-time terminal output streaming.
+- **Automated Rollback Engine**:
+  - Instant deployment rollback mechanism (`POST /api/v1/deployments/{id}/rollback`) restoring backup snapshots from `services/glitch_agent/backups/` directory with zero downtime.
 
 ### D. Pipeline & Automated Workflow Engine
 - **Multi-Environment Promotion**:

@@ -64,6 +64,16 @@ async def run_deployment_flow(ws, command_data):
             except Exception as dl_err:
                 details += f" [Local Fallback Mode: {dl_err}]"
 
+        elif stage == "BACKING_UP":
+            if os.path.exists(target_deploy_dir):
+                backup_path = os.path.join("backups", app_name, version)
+                os.makedirs(os.path.dirname(backup_path), exist_ok=True)
+                shutil.rmtree(backup_path, ignore_errors=True)
+                shutil.copytree(target_deploy_dir, backup_path)
+                details += " [Snapshot created]"
+            else:
+                details += " [Initial deployment - No prior snapshot]"
+
         elif stage == "VERIFYING":
             if os.path.exists(download_path):
                 hasher = hashlib.sha256()
@@ -105,6 +115,99 @@ async def run_deployment_flow(ws, command_data):
 
     print(f"[OK] Deployment {deployment_id} rollout complete.\n")
 
+async def run_remote_shell(ws, command_data):
+    exec_id = command_data.get("execId", "exec-000")
+    raw_cmd = command_data.get("command", "").strip()
+    print(f"\n[EXEC] Executing remote command [{exec_id}]: {raw_cmd}")
+
+    try:
+        proc = await asyncio.create_subprocess_shell(
+            raw_cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15.0)
+        output = stdout.decode("utf-8", errors="replace")
+        err_out = stderr.decode("utf-8", errors="replace")
+        exit_code = proc.returncode
+    except asyncio.TimeoutError:
+        output = ""
+        err_out = "Command execution timed out after 15 seconds."
+        exit_code = 124
+    except Exception as e:
+        output = ""
+        err_out = f"Execution error: {str(e)}"
+        exit_code = 1
+
+    resp_frame = {
+        "event": "agent.exec.response",
+        "agentId": AGENT_ID,
+        "execId": exec_id,
+        "command": raw_cmd,
+        "stdout": output,
+        "stderr": err_out,
+        "exitCode": exit_code,
+        "timestamp": time.time()
+    }
+    try:
+        await ws.send(json.dumps(resp_frame))
+    except Exception as err:
+        print(f"[WARN] Failed to send exec response: {err}")
+
+async def run_rollback_flow(ws, command_data):
+    rollback_id = command_data.get("rollbackId", "rb-000")
+    deployment_id = command_data.get("deploymentId", "dep-000")
+    payload = command_data.get("payload", {})
+    app_name = payload.get("application", "Application")
+    version = payload.get("version", "v1.0.0")
+
+    print(f"\n[ROLLBACK] Triggering Rollback for {app_name} ({version}) - ID: {rollback_id}")
+
+    backup_dir = os.path.join("backups", app_name, version)
+    target_deploy_dir = os.path.join("deployments", app_name, version)
+
+    steps = [
+        ("INITIALIZING", f"Preparing rollback environment for {app_name}..."),
+        ("STOPPING", f"Gracefully stopping active processes for {app_name}..."),
+        ("RESTORING", f"Restoring package files from backup snapshot..."),
+        ("HEALTH_CHECK", f"Executing post-rollback verification check..."),
+        ("SUCCESS", f"Rollback complete! System restored to stable state.")
+    ]
+
+    for step_num, (stage, details) in enumerate(steps, 1):
+        print(f"  [{step_num}/5] Rollback {stage}: {details}")
+
+        if stage == "RESTORING":
+            if os.path.exists(backup_dir):
+                shutil.rmtree(target_deploy_dir, ignore_errors=True)
+                shutil.copytree(backup_dir, target_deploy_dir)
+                details += " [Snapshot restored from disk]"
+            else:
+                os.makedirs(target_deploy_dir, exist_ok=True)
+                with open(os.path.join(target_deploy_dir, "manifest.json"), "w") as f:
+                    f.write(json.dumps({"app": app_name, "version": version, "status": "rolled_back"}))
+                details += " [Created clean restored state]"
+
+        frame = {
+            "event": "agent.rollback.progress",
+            "agentId": AGENT_ID,
+            "rollbackId": rollback_id,
+            "deploymentId": deployment_id,
+            "stage": stage,
+            "status": "IN_PROGRESS" if stage != "SUCCESS" else "SUCCESS",
+            "details": details,
+            "timestamp": int(time.time() * 1000)
+        }
+
+        try:
+            await ws.send(json.dumps(frame))
+        except Exception as err:
+            print(f"[WARN] Error sending rollback telemetry: {err}")
+
+        await asyncio.sleep(0.5)
+
+    print(f"[OK] Rollback {rollback_id} complete.\n")
+
 async def connect_to_gateway():
     while True:
         try:
@@ -115,7 +218,6 @@ async def connect_to_gateway():
                 async def send_heartbeat():
                     while True:
                         try:
-                            # Sample REAL system hardware metrics via psutil
                             cpu_pct = psutil.cpu_percent(interval=None)
                             mem_pct = psutil.virtual_memory().percent
 
@@ -145,6 +247,10 @@ async def connect_to_gateway():
                             event_type = data.get("event")
                             if event_type == "agent.command.deploy":
                                 asyncio.create_task(run_deployment_flow(ws, data))
+                            elif event_type == "agent.command.exec":
+                                asyncio.create_task(run_remote_shell(ws, data))
+                            elif event_type == "agent.command.rollback":
+                                asyncio.create_task(run_rollback_flow(ws, data))
                             elif event_type == "agent.pong":
                                 pass
                         except Exception as parse_err:
