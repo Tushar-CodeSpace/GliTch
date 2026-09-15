@@ -9,6 +9,8 @@ import asyncio
 import random
 import uuid
 
+from database import db_manager
+
 app = FastAPI(
     title="GliTch Central Control Plane API Gateway",
     description="High-performance FastAPI Control Plane Engine managing Applications, Clients, Sites, Pipelines, Builds, Approvals, Deployments, and Edge Agents over WebSockets.",
@@ -23,6 +25,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+async def startup_db():
+    await db_manager.connect()
+
+@app.on_event("shutdown")
+async def shutdown_db():
+    await db_manager.close()
 
 # ==========================================
 # 1. PYDANTIC SCHEMAS (CORE ENTITIES)
@@ -335,12 +345,18 @@ def health_check():
         "service": "GliTch Control Plane Engine",
         "version": "2.0.0",
         "timestamp": time.time(),
-        "python_version": "3.12"
+        "python_version": "3.12",
+        "documentdb_connected": db_manager.is_connected
     }
 
 # --- APPLICATIONS ---
 @app.get("/api/v1/applications", response_model=List[Application])
-def get_applications():
+async def get_applications():
+    if db_manager.is_connected and db_manager.db is not None:
+        cursor = db_manager.db.applications.find({}, {"_id": 0})
+        docs = await cursor.to_list(length=100)
+        if docs:
+            return docs
     return applications_db
 
 @app.post("/api/v1/applications", response_model=Application, status_code=201)
@@ -354,7 +370,11 @@ async def create_application(app_in: ApplicationCreate):
         status="ACTIVE",
         created_at=time.strftime("%Y-%m-%d %H:%M:%S")
     )
-    applications_db.append(new_app)
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.applications.insert_one(new_app.model_dump())
+    else:
+        applications_db.append(new_app)
+
     await telemetry_manager.broadcast({"type": "application_created", "application": new_app.model_dump()})
     return new_app
 
