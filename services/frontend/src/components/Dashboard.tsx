@@ -239,8 +239,8 @@ export function Dashboard({ userEmail, onLogout }: DashboardProps) {
           if (fresh) {
             return {
               ...existing,
-              requestsPerSec: fresh.requestsPerSec,
-              lastSync: fresh.lastSync
+              requestsPerSec: fresh.requestsPerSec ?? existing.requestsPerSec,
+              lastSync: fresh.lastSync ?? existing.lastSync
             };
           }
           return existing;

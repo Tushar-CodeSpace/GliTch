@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useWebSocket } from "@/lib/useWebSocket";
 import { Users, Server, Activity, Terminal, Send, X, Loader2, PlayCircle, ShieldAlert } from "lucide-react";
 
 interface ClientAgent {
@@ -33,6 +34,9 @@ export function AgentSwarmPage({ agents }: AgentSwarmPageProps) {
   const [isExecuting, setIsExecuting] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
+  // Shared WebSocket hook for real-time remote shell output
+  const { subscribeEvent, sendEvent } = useWebSocket();
+
   // Auto-scroll terminal to bottom when logs update
   useEffect(() => {
     if (activeTerminalAgent) {
@@ -40,70 +44,61 @@ export function AgentSwarmPage({ agents }: AgentSwarmPageProps) {
     }
   }, [terminalLogs, activeTerminalAgent]);
 
-  // WebSocket Listener for real-time remote shell output
+  // WebSocket Listener for real-time remote shell output via shared hook
   useEffect(() => {
-    const ws = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
+    const unsubscribe = subscribeEvent((data: any) => {
+      if (data.type === "agent_exec_response") {
+        const payload = data.payload;
+        const agentId = data.agent_id || "agent-01";
+        const stdout = payload.stdout || "";
+        const stderr = payload.stderr || "";
+        const exitCode = payload.exitCode ?? 0;
+        const timeStr = new Date().toLocaleTimeString();
 
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "agent_exec_response") {
-          const payload = data.payload;
-          const agentId = data.agent_id || "agent-01";
-          const stdout = payload.stdout || "";
-          const stderr = payload.stderr || "";
-          const exitCode = payload.exitCode ?? 0;
-          const timeStr = new Date().toLocaleTimeString();
+        setTerminalLogs((prev) => {
+          const current = prev[agentId] || [];
+          const newEntries: TerminalLog[] = [];
 
-          setTerminalLogs((prev) => {
-            const current = prev[agentId] || [];
-            const newEntries: TerminalLog[] = [];
+          if (stdout.trim()) {
+            newEntries.push({
+              id: `out-${Date.now()}-1`,
+              type: "output",
+              text: stdout,
+              timestamp: timeStr,
+              exitCode
+            });
+          }
+          if (stderr.trim()) {
+            newEntries.push({
+              id: `err-${Date.now()}-2`,
+              type: "error",
+              text: stderr,
+              timestamp: timeStr,
+              exitCode
+            });
+          }
+          if (!stdout.trim() && !stderr.trim()) {
+            newEntries.push({
+              id: `info-${Date.now()}-3`,
+              type: "info",
+              text: `[Process exited with code ${exitCode}]`,
+              timestamp: timeStr,
+              exitCode
+            });
+          }
 
-            if (stdout.trim()) {
-              newEntries.push({
-                id: `out-${Date.now()}-1`,
-                type: "output",
-                text: stdout,
-                timestamp: timeStr,
-                exitCode
-              });
-            }
-            if (stderr.trim()) {
-              newEntries.push({
-                id: `err-${Date.now()}-2`,
-                type: "error",
-                text: stderr,
-                timestamp: timeStr,
-                exitCode
-              });
-            }
-            if (!stdout.trim() && !stderr.trim()) {
-              newEntries.push({
-                id: `info-${Date.now()}-3`,
-                type: "info",
-                text: `[Process exited with code ${exitCode}]`,
-                timestamp: timeStr,
-                exitCode
-              });
-            }
+          return {
+            ...prev,
+            [agentId]: [...current, ...newEntries]
+          };
+        });
 
-            return {
-              ...prev,
-              [agentId]: [...current, ...newEntries]
-            };
-          });
-
-          setIsExecuting(false);
-        }
-      } catch (err) {
-        console.error("WebSocket message parse error:", err);
+        setIsExecuting(false);
       }
-    };
+    });
 
-    return () => {
-      ws.close();
-    };
-  }, []);
+    return unsubscribe;
+  }, [subscribeEvent]);
 
   const handleExecuteCommand = async (agentId: string, cmdToRun?: string) => {
     const cmd = cmdToRun || commandInput.trim();

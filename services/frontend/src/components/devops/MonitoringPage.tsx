@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useWebSocket } from "@/lib/useWebSocket";
 import { 
   Activity, 
   Search, 
   Loader2,
   Box,
-  Server
+  Server,
+  Cpu
 } from "lucide-react";
 
 interface AgentItem {
@@ -19,12 +21,16 @@ interface AgentItem {
   version: string;
   status: string;
   last_seen: string;
+  cpu_percent?: number;
+  memory_percent?: number;
 }
 
 export function MonitoringPage() {
   const [agents, setAgents] = useState<AgentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const { telemetry } = useWebSocket();
 
   const fetchAgents = async () => {
     try {
@@ -44,6 +50,25 @@ export function MonitoringPage() {
   useEffect(() => {
     fetchAgents();
   }, []);
+
+  // Merge live telemetry metrics (CPU/RAM) into agent records
+  useEffect(() => {
+    if (telemetry?.agents) {
+      setAgents(prev => {
+        return prev.map(existing => {
+          const fresh = telemetry.agents.find((a: any) => a.id === existing.id);
+          if (fresh) {
+            return {
+              ...existing,
+              cpu_percent: fresh.cpu_percent ?? existing.cpu_percent,
+              memory_percent: fresh.memory_percent ?? existing.memory_percent
+            };
+          }
+          return existing;
+        });
+      });
+    }
+  }, [telemetry]);
 
   const filteredAgents = agents.filter(a => 
     a.agent_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -132,6 +157,18 @@ export function MonitoringPage() {
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Version:</span>
                   <span className="text-zinc-300">{agent.version}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500 flex items-center gap-1.5"><Cpu className="w-3 h-3" /> CPU Usage:</span>
+                  <span className={agent.cpu_percent !== undefined && agent.cpu_percent > 80 ? "text-amber-400" : "text-emerald-400 font-semibold"}>
+                    {agent.cpu_percent !== undefined ? `${agent.cpu_percent.toFixed(1)}%` : "N/A"}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500 flex items-center gap-1.5"><Activity className="w-3 h-3" /> RAM Usage:</span>
+                  <span className={agent.memory_percent !== undefined && agent.memory_percent > 80 ? "text-amber-400" : "text-emerald-400 font-semibold"}>
+                    {agent.memory_percent !== undefined ? `${agent.memory_percent.toFixed(1)}%` : "N/A"}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">Last Heartbeat:</span>

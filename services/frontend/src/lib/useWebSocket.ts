@@ -14,13 +14,18 @@ export interface TelemetryData {
   latency_ms: number;
   agents: Array<{
     id: string;
-    name: string;
-    site: string;
-    ip: string;
+    site_id?: string;
+    agent_code?: string;
+    hostname?: string;
+    ip_address?: string;
     version: string;
     status: "ONLINE" | "PULLING" | "UPDATING" | "IDLE";
-    lastSync: string;
-    requestsPerSec: number;
+    last_seen?: string;
+    lastSync?: string;
+    requestsPerSec?: number;
+    requests_per_sec?: number;
+    cpu_percent?: number;
+    memory_percent?: number;
   }>;
   http_log: {
     id: string;

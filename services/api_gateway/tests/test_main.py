@@ -97,4 +97,84 @@ def test_deployment_rollback_endpoint():
     # Cleanup
     client.delete(f"/api/v1/applications/{app_id}")
 
+def test_agent_heartbeat_endpoint():
+    """Test the REST heartbeat endpoint for edge agents."""
+    heartbeat_payload = {
+        "site_id": "site-001",
+        "agent_code": "agent-99",
+        "hostname": "edge-test-node",
+        "ip_address": "192.168.1.100",
+        "version": "v2.4.0",
+        "cpu_percent": 14.2,
+        "memory_percent": 38.6
+    }
+    res = client.post("/api/v1/agents/heartbeat", json=heartbeat_payload)
+    assert res.status_code == 200
+    data = res.json()
+    assert data["status"] == "received"
+    assert data["agent_id"] == "agent-99"
+
+    # Verify the agent is registered
+    agents_res = client.get("/api/v1/agents")
+    assert agents_res.status_code == 200
+    agents = agents_res.json()
+    assert any(a["id"] == "agent-99" for a in agents)
+    registered = next(a for a in agents if a["id"] == "agent-99")
+    assert registered["cpu_percent"] == 14.2
+    assert registered["memory_percent"] == 38.6
+
+def test_site_crud_endpoints():
+    """Test full CRUD for Sites including new GET/DELETE by ID endpoints."""
+    # Create a client first
+    client_res = client.post("/api/v1/clients", json={
+        "name": "Test Client",
+        "code": "TC"
+    })
+    assert client_res.status_code == 201
+    client_id = client_res.json()["id"]
+
+    # Create a site
+    site_res = client.post("/api/v1/sites", json={
+        "client_id": client_id,
+        "name": "Test Site",
+        "code": "TS",
+        "environment": "Production",
+        "location": "US-East"
+    })
+    assert site_res.status_code == 201
+    site_id = site_res.json()["id"]
+
+    # GET single site
+    get_res = client.get(f"/api/v1/sites/{site_id}")
+    assert get_res.status_code == 200
+    assert get_res.json()["id"] == site_id
+
+    # DELETE site
+    del_res = client.delete(f"/api/v1/sites/{site_id}")
+    assert del_res.status_code == 200
+
+    # Cleanup client
+    client.delete(f"/api/v1/clients/{client_id}")
+
+def test_agent_model_includes_telemetry_fields():
+    """Verify Agent model exposes cpu_percent and memory_percent fields."""
+    from main import Agent
+    agent = Agent(
+        id="agent-01",
+        site_id="site-001",
+        agent_code="AGENT-01",
+        hostname="edge-node-01",
+        ip_address="192.168.1.105",
+        site_name="BLR-01",
+        status="ONLINE",
+        last_seen="Just now",
+        cpu_percent=18.5,
+        memory_percent=42.1
+    )
+    assert agent.cpu_percent == 18.5
+    assert agent.memory_percent == 42.1
+    dumped = agent.model_dump()
+    assert "cpu_percent" in dumped
+    assert "memory_percent" in dumped
+
 

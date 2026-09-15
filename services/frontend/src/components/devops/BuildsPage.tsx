@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { 
   Layers, 
   Search, 
@@ -9,7 +10,8 @@ import {
   Trash2, 
   X,
   Loader2,
-  Box
+  Box,
+  ChevronDown
 } from "lucide-react";
 
 interface BuildItem {
@@ -26,8 +28,19 @@ interface BuildItem {
   created_at: string;
 }
 
+interface ApplicationItem {
+  id: string;
+  name: string;
+  repository: string;
+  default_branch: string;
+  technology: string;
+  is_private?: boolean;
+  status: string;
+}
+
 export function BuildsPage() {
   const [builds, setBuilds] = useState<BuildItem[]>([]);
+  const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
@@ -56,8 +69,21 @@ export function BuildsPage() {
     }
   };
 
+  const fetchApplications = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/applications");
+      if (res.ok) {
+        const data = await res.json();
+        setApplications(data);
+      }
+    } catch (err) {
+      console.error("Error fetching applications:", err);
+    }
+  };
+
   useEffect(() => {
     fetchBuilds();
+    fetchApplications();
   }, []);
 
   const handleCreateBuild = async (e: React.FormEvent) => {
@@ -209,6 +235,33 @@ export function BuildsPage() {
             </div>
 
             <form onSubmit={handleCreateBuild} className="space-y-4 text-xs font-sans">
+              <div className="space-y-1.5">
+                <Label className="text-zinc-300 font-semibold">Target Application *</Label>
+                <div className="relative">
+                  <select
+                    value={formData.application_id}
+                    onChange={(e) => {
+                      const selected = applications.find(a => a.id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        application_id: e.target.value,
+                        branch: selected?.default_branch || "main"
+                      });
+                    }}
+                    className="w-full h-10 pl-3 pr-8 bg-[#060908] border border-zinc-800 rounded-xl text-xs text-white appearance-none focus:outline-none focus:border-emerald-500/60 cursor-pointer"
+                    required
+                  >
+                    <option value="">Select application...</option>
+                    {applications.map((app) => (
+                      <option key={app.id} value={app.id}>
+                        {app.name} ({app.default_branch})
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-zinc-300 font-semibold">Build Version *</label>
                 <Input 

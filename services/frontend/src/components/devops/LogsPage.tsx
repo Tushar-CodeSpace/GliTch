@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useWebSocket } from "@/lib/useWebSocket";
 import { 
   FileText, 
   Search, 
@@ -50,37 +51,31 @@ export function LogsPage() {
 
   useEffect(() => {
     fetchLogs();
-
-    // Connect to WebSocket for real-time live log streaming
-    const ws = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
-
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "log_entry" && data.log) {
-          setLogs((prev) => [data.log, ...prev]);
-        } else if (data.type === "agent_log_stream" && data.payload) {
-          const p = data.payload;
-          const newLog: LogEntry = {
-            id: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-            timestamp: new Date().toLocaleTimeString(),
-            level: p.level || "INFO",
-            source: data.agent_id || "AGENT_HOST",
-            service: "GliTch Edge Agent Stream",
-            message: p.message || p.text || JSON.stringify(p),
-            environment: "Production"
-          };
-          setLogs((prev) => [newLog, ...prev]);
-        }
-      } catch (err) {
-        console.error("Error parsing log WS message:", err);
-      }
-    };
-
-    return () => {
-      ws.close();
-    };
   }, []);
+
+  const { subscribeEvent } = useWebSocket();
+
+  useEffect(() => {
+    const unsubscribe = subscribeEvent((data: any) => {
+      if (data.type === "log_entry" && data.log) {
+        setLogs((prev) => [data.log, ...prev]);
+      } else if (data.type === "agent_log_stream" && data.payload) {
+        const p = data.payload;
+        const newLog: LogEntry = {
+          id: `ws-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          timestamp: new Date().toLocaleTimeString(),
+          level: p.level || "INFO",
+          source: data.agent_id || "AGENT_HOST",
+          service: "GliTch Edge Agent Stream",
+          message: p.message || p.text || JSON.stringify(p),
+          environment: "Production"
+        };
+        setLogs((prev) => [newLog, ...prev]);
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribeEvent]);
 
   const handleClearLogs = () => {
     setLogs([]);

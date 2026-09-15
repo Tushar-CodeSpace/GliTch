@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useWebSocket } from "@/lib/useWebSocket";
 import { 
   Rocket, 
   Search, 
@@ -11,7 +13,8 @@ import {
   Loader2,
   RotateCcw,
   AlertTriangle,
-  CheckCircle2
+  CheckCircle2,
+  ChevronDown
 } from "lucide-react";
 
 interface DeploymentItem {
@@ -28,8 +31,28 @@ interface DeploymentItem {
   started_at: string;
 }
 
+interface BuildItem {
+  id: string;
+  app_name: string;
+  version: string;
+  application_id: string;
+  branch: string;
+  status: string;
+  build_number?: string;
+}
+
+interface SiteItem {
+  id: string;
+  name: string;
+  client_name: string;
+  code: string;
+  environment: string;
+}
+
 export function DeploymentsPage() {
   const [deployments, setDeployments] = useState<DeploymentItem[]>([]);
+  const [builds, setBuilds] = useState<BuildItem[]>([]);
+  const [sites, setSites] = useState<SiteItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
@@ -42,8 +65,8 @@ export function DeploymentsPage() {
 
   // Form State for new deployment
   const [formData, setFormData] = useState({
-    build_id: "build-1024",
-    site_id: "site-001",
+    build_id: "",
+    site_id: "",
     environment: "Production",
     strategy: "STANDARD"
   });
@@ -63,37 +86,56 @@ export function DeploymentsPage() {
     }
   };
 
+  const fetchBuilds = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/builds");
+      if (res.ok) {
+        setBuilds(await res.json());
+      }
+    } catch (err) {
+      console.error("Error fetching builds:", err);
+    }
+  };
+
+  const fetchSites = async () => {
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/v1/sites");
+      if (res.ok) {
+        setSites(await res.json());
+      }
+    } catch (err) {
+      console.error("Error fetching sites:", err);
+    }
+  };
+
   useEffect(() => {
     fetchDeployments();
-
-    // Listen for live deployment & rollback updates via WebSocket
-    const ws = new WebSocket("ws://127.0.0.1:8000/ws/telemetry");
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "deployment_triggered" || data.type === "deployment_updated") {
-          fetchDeployments();
-        } else if (data.type === "agent_rollback_progress") {
-          const payload = data.payload || {};
-          const depId = payload.deploymentId;
-          const stage = payload.stage;
-          setDeployments((prev) =>
-            prev.map((d) =>
-              d.id === depId
-                ? { ...d, status: stage === "SUCCESS" ? "Rolled Back" : `Rolling Back (${stage})` }
-                : d
-            )
-          );
-        }
-      } catch (e) {
-        console.error("WS error in DeploymentsPage:", e);
-      }
-    };
-
-    return () => {
-      ws.close();
-    };
+    fetchBuilds();
+    fetchSites();
   }, []);
+
+  const { subscribeEvent } = useWebSocket();
+
+  useEffect(() => {
+    const unsubscribe = subscribeEvent((data: any) => {
+      if (data.type === "deployment_triggered" || data.type === "deployment_updated") {
+        fetchDeployments();
+      } else if (data.type === "agent_rollback_progress") {
+        const payload = data.payload || {};
+        const depId = payload.deploymentId;
+        const stage = payload.stage;
+        setDeployments((prev) =>
+          prev.map((d) =>
+            d.id === depId
+              ? { ...d, status: stage === "SUCCESS" ? "Rolled Back" : `Rolling Back (${stage})` }
+              : d
+          )
+        );
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribeEvent]);
 
   const handleTriggerDeployment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -341,6 +383,65 @@ export function DeploymentsPage() {
             </div>
 
             <form onSubmit={handleTriggerDeployment} className="space-y-4 text-xs font-sans">
+              <div className="space-y-1.5">
+                <Label className="text-zinc-300 font-semibold">Build Artifact *</Label>
+                <div className="relative">
+                  <select
+                    value={formData.build_id}
+                    onChange={(e) => {
+                      const selected = builds.find(b => b.id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        build_id: e.target.value,
+                        environment: selected ? "Production" : formData.environment
+                      });
+                    }}
+                    className="w-full h-10 pl-3 pr-8 bg-[#060908] border border-zinc-800 rounded-xl text-xs text-white appearance-none focus:outline-none focus:border-emerald-500/60 cursor-pointer"
+                    required
+                  >
+                    <option value="">Select build artifact...</option>
+                    {builds.filter(b => b.status === "READY").map((build) => (
+                      <option key={build.id} value={build.id}>
+                        {build.app_name} ({build.version}) - {build.build_number || 'N/A'}
+                      </option>
+                    ))}
+                    {builds.filter(b => b.status !== "READY").map((build) => (
+                      <option key={build.id} value={build.id} disabled>
+                        {build.app_name} ({build.version}) - {build.status}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-zinc-300 font-semibold">Target Site / Edge Agent *</Label>
+                <div className="relative">
+                  <select
+                    value={formData.site_id}
+                    onChange={(e) => {
+                      const selected = sites.find(s => s.id === e.target.value);
+                      setFormData({
+                        ...formData,
+                        site_id: e.target.value,
+                        environment: selected?.environment || formData.environment
+                      });
+                    }}
+                    className="w-full h-10 pl-3 pr-8 bg-[#060908] border border-zinc-800 rounded-xl text-xs text-white appearance-none focus:outline-none focus:border-emerald-500/60 cursor-pointer"
+                    required
+                  >
+                    <option value="">Select target site...</option>
+                    {sites.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.name} ({site.code}) - {site.client_name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-4 h-4 text-zinc-500 absolute right-3 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-zinc-300 font-semibold">Environment Target</label>
                 <Input 

@@ -185,6 +185,8 @@ class AgentRegister(BaseModel):
     hostname: str
     ip_address: str
     version: str = "v2.4.0"
+    cpu_percent: float = 0.0
+    memory_percent: float = 0.0
 
 class Agent(AgentRegister):
     id: str
@@ -192,6 +194,8 @@ class Agent(AgentRegister):
     status: str = "ONLINE"
     last_seen: str
     requests_per_sec: int = 1420
+    cpu_percent: float = 0.0
+    memory_percent: float = 0.0
 
 class LogEntry(BaseModel):
     id: str
@@ -432,6 +436,26 @@ async def create_site(site_in: SiteCreate):
     sites_db.append(new_site)
     await telemetry_manager.broadcast({"type": "site_created", "site": new_site.model_dump()})
     return new_site
+
+@app.get("/api/v1/sites/{site_id}", response_model=Site)
+async def get_site(site_id: str):
+    site = next((s for s in sites_db if s.id == site_id), None)
+    if not site and db_manager.is_connected and db_manager.db is not None:
+        doc = await db_manager.db.sites.find_one({"id": site_id}, {"_id": 0})
+        if doc:
+            site = Site(**doc)
+    if not site:
+        raise HTTPException(status_code=404, detail=f"Site {site_id} not found")
+    return site
+
+@app.delete("/api/v1/sites/{site_id}")
+async def delete_site(site_id: str):
+    global sites_db
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.sites.delete_one({"id": site_id})
+    sites_db = [s for s in sites_db if s.id != site_id]
+    await telemetry_manager.broadcast({"type": "site_deleted", "site_id": site_id})
+    return {"message": f"Site {site_id} deleted successfully"}
 
 # --- PIPELINES & BUILDS ---
 @app.get("/api/v1/pipelines", response_model=List[Pipeline])
@@ -810,6 +834,59 @@ async def trigger_deployment(dep_in: DeploymentCreate):
     })
     return new_dep
 
+@app.post("/api/v1/agents/heartbeat")
+async def agent_heartbeat(payload: AgentRegister):
+    """
+    REST heartbeat endpoint consumed by edge agents to register availability
+    and push real-time hardware telemetry (CPU/RAM) sampled via psutil.
+    """
+    existing = next((a for a in agents_db if a.id == payload.agent_code), None)
+
+    last_seen = "Just now"
+    agent_status = "ONLINE"
+    if existing:
+        agent_status = existing.status
+
+    if existing:
+        existing.status = agent_status
+        existing.hostname = payload.hostname
+        existing.ip_address = payload.ip_address
+        existing.version = payload.version
+        existing.last_seen = last_seen
+        existing.cpu_percent = payload.cpu_percent
+        existing.memory_percent = payload.memory_percent
+        agent_dict = existing.model_dump()
+    else:
+        new_agent = Agent(
+            id=payload.agent_code,
+            site_id=payload.site_id,
+            agent_code=payload.agent_code,
+            hostname=payload.hostname,
+            ip_address=payload.ip_address,
+            version=payload.version,
+            site_name=payload.site_id,
+            status=agent_status,
+            last_seen=last_seen,
+            cpu_percent=payload.cpu_percent,
+            memory_percent=payload.memory_percent
+        )
+        agents_db.append(new_agent)
+        agent_dict = new_agent.model_dump()
+
+    if db_manager.is_connected and db_manager.db is not None:
+        await db_manager.db.agents.update_one(
+            {"id": payload.agent_code},
+            {"$set": {**agent_dict}},
+            upsert=True
+        )
+
+    await telemetry_manager.broadcast({
+        "type": "agent_heartbeat",
+        "agent": agent_dict
+    })
+    return {"status": "received", "agent_id": payload.agent_code}
+
+
 # --- AGENTS & REMOTE EXEC ---
 @app.get("/api/v1/agents", response_model=List[Agent])
 async def get_agents():
@@ -963,6 +1040,47 @@ async def websocket_agent_endpoint(websocket: WebSocket):
             
             if event_type == "agent.ping":
                 await websocket.send_json({"event": "agent.pong", "timestamp": time.time()})
+
+                # Persist real-time telemetry sampled by the edge agent (psutil)
+                cpu_pct = float(data.get("cpuPercent", 0.0))
+                mem_pct = float(data.get("memoryPercent", 0.0))
+                status = data.get("status", "ONLINE")
+
+                existing = next((a for a in agents_db if a.id == agent_id), None)
+                if existing:
+                    existing.status = status
+                    existing.last_seen = "Just now"
+                    existing.cpu_percent = cpu_pct
+                    existing.memory_percent = mem_pct
+                    agent_dict = existing.model_dump()
+                else:
+                    new_agent = Agent(
+                        id=agent_id,
+                        site_id=data.get("siteCode", "BLR-01"),
+                        agent_code=agent_id,
+                        hostname=data.get("hostname", agent_id),
+                        ip_address=data.get("ipAddress", "127.0.0.1"),
+                        version="v2.4.0",
+                        site_name=data.get("siteCode", "BLR-01"),
+                        status=status,
+                        last_seen="Just now",
+                        cpu_percent=cpu_pct,
+                        memory_percent=mem_pct
+                    )
+                    agents_db.append(new_agent)
+                    agent_dict = new_agent.model_dump()
+
+                if db_manager.is_connected and db_manager.db is not None:
+                    await db_manager.db.agents.update_one(
+                        {"id": agent_id},
+                        {"$set": {**agent_dict}},
+                        upsert=True
+                    )
+
+                await telemetry_manager.broadcast({
+                    "type": "agent_heartbeat",
+                    "agent": agent_dict
+                })
             elif event_type == "agent.telemetry.progress":
                 await telemetry_manager.broadcast({
                     "type": "agent_progress_update",
