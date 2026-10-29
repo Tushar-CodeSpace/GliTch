@@ -2,7 +2,13 @@
 # Glitch CLI — Local DevOps & Autonomous SRE Interface
 set -e
 
-DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 PID_FILE="${DIR}/data/glitch.pid"
 PORT="${GLITCH_PORT:-4780}"
 HOST="${GLITCH_HOST:-127.0.0.1}"

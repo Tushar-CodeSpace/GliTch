@@ -5,10 +5,17 @@
 set -e
 
 # Configuration
-INSTALL_DIR="${GLITCH_DIR:-/opt/glitch}"
+SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$SOURCE" ]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ $SOURCE != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+RESOLVED_DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
+
+INSTALL_DIR="${GLITCH_DIR:-$RESOLVED_DIR}"
 if [ ! -d "$INSTALL_DIR" ]; then
-  # Fallback to current repository directory if running locally
-  INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  INSTALL_DIR="/opt/glitch"
 fi
 
 STAMP_FILE="/tmp/glitch-update-pending"

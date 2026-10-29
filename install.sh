@@ -101,11 +101,11 @@ if [ ! -f "${ROOT_DIR}/services/daemon/src/db.mjs" ]; then
   fi
 
   if [ "$EUID" -eq 0 ]; then
-    INSTALL_DIR="/opt/glitch"
+    INSTALL_DIR="${GLITCH_DIR:-/opt/glitch}"
     INSTALL_CLI=true
     INSTALL_APT=true
   else
-    INSTALL_DIR="${HOME}/.glitch"
+    INSTALL_DIR="${GLITCH_DIR:-${HOME}/.local/share/glitch}"
     INSTALL_CLI=true
   fi
   echo -e "${BOLD}▶ Remote installation detected. Preparing GliTch workspace...${NC}"
@@ -114,6 +114,9 @@ if [ ! -f "${ROOT_DIR}/services/daemon/src/db.mjs" ]; then
     echo -e "  • Updating existing repository..."
     git -C "${INSTALL_DIR}" pull --quiet || true
   else
+    if [ -d "${INSTALL_DIR}" ]; then
+      rm -rf "${INSTALL_DIR}"
+    fi
     echo -e "  • Cloning repository from GitHub..."
     mkdir -p "$(dirname "$INSTALL_DIR")"
     git clone --depth 1 https://github.com/Tushar-CodeSpace/GliTch.git "${INSTALL_DIR}"
@@ -121,6 +124,9 @@ if [ ! -f "${ROOT_DIR}/services/daemon/src/db.mjs" ]; then
   ROOT_DIR="${INSTALL_DIR}"
   DB_PATH="${ROOT_DIR}/data/glitch.db"
 fi
+
+# Always anchor working directory to ROOT_DIR
+cd "${ROOT_DIR}"
 
 echo -e "${BOLD}▶ [1/5] Verifying System Requirements...${NC}"
 
@@ -285,8 +291,11 @@ echo -e "\n${BOLD}▶ [2/5] Initializing Embedded SQLite Database...${NC}"
 mkdir -p "$(dirname "$DB_PATH")"
 
 export GLITCH_DB_PATH="$DB_PATH"
-node -e '
-import("./services/daemon/src/db.mjs").then(m => {
+export GLITCH_ROOT_DIR="$ROOT_DIR"
+node --input-type=module -e '
+import { pathToFileURL } from "node:url";
+const dbModulePath = pathToFileURL(process.env.GLITCH_ROOT_DIR + "/services/daemon/src/db.mjs").href;
+import(dbModulePath).then(m => {
   const { db, dbPath } = m.initDatabase(process.env.GLITCH_DB_PATH);
   console.log("  • Database Engine:  SQLite 3 (WAL mode active)");
   console.log("  • Database File:    " + dbPath);
