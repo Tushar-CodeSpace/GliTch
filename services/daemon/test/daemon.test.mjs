@@ -2,45 +2,56 @@ import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { initDatabase, hashPassword, verifyPassword } from "../src/db.mjs";
 import { createServer } from "../src/server.mjs";
 import { collectDeviceMetrics } from "../src/system.mjs";
 import { determineBumpType, calculateNextVersion } from "../../../scripts/version.mjs";
 
-const TEST_DB_PATH = path.resolve(process.cwd(), "data", "test_glitch.db");
 const TEST_PORT = 4789;
-let serverInstance;
-let testDb;
+const DB_PATH_1 = path.join(os.tmpdir(), `glitch_test_layer_${process.pid}.db`);
+const DB_PATH_2 = path.join(os.tmpdir(), `glitch_test_api_${process.pid}.db`);
+
+function safeUnlink(basePath) {
+  for (const ext of ["", "-wal", "-shm"]) {
+    try {
+      const p = basePath + ext;
+      if (fs.existsSync(p)) fs.unlinkSync(p);
+    } catch {
+      // Ignored for platform portability
+    }
+  }
+}
 
 describe("SQLite Database Layer", () => {
+  let dbInstance;
+
   before(() => {
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
-    const { db } = initDatabase(TEST_DB_PATH);
-    testDb = db;
+    safeUnlink(DB_PATH_1);
+    const { db } = initDatabase(DB_PATH_1);
+    dbInstance = db;
   });
 
   after(() => {
-    if (testDb) {
-      testDb.close();
-    }
-    for (const ext of ["", "-wal", "-shm"]) {
-      const p = TEST_DB_PATH + ext;
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+    try {
+      if (dbInstance) {
+        dbInstance.close();
+      }
+    } finally {
+      safeUnlink(DB_PATH_1);
     }
   });
 
   test("Database initialized in WAL mode and foreign keys enabled", () => {
-    const journalMode = testDb.prepare("PRAGMA journal_mode").get().journal_mode;
+    const journalMode = dbInstance.prepare("PRAGMA journal_mode").get().journal_mode;
     assert.equal(journalMode.toLowerCase(), "wal");
 
-    const foreignKeys = testDb.prepare("PRAGMA foreign_keys").get().foreign_keys;
+    const foreignKeys = dbInstance.prepare("PRAGMA foreign_keys").get().foreign_keys;
     assert.equal(foreignKeys, 1);
   });
 
   test("All required tables are created", () => {
-    const tables = testDb.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
+    const tables = dbInstance.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
     const tableNames = tables.map((t) => t.name);
     
     const required = ["db_meta", "users", "sessions", "incidents", "services", "pipelines", "copilot_chats", "metrics_history"];
@@ -59,25 +70,25 @@ describe("SQLite Database Layer", () => {
   });
 
   test("Default operator accounts are seeded", () => {
-    const admin = testDb.prepare("SELECT * FROM users WHERE username = 'admin'").get();
+    const admin = dbInstance.prepare("SELECT * FROM users WHERE username = 'admin'").get();
     assert.ok(admin, "admin user should exist");
     assert.equal(admin.role, "admin");
     assert.equal(verifyPassword("admin", admin.password_hash), true);
 
-    const operator = testDb.prepare("SELECT * FROM users WHERE username = 'operator'").get();
+    const operator = dbInstance.prepare("SELECT * FROM users WHERE username = 'operator'").get();
     assert.ok(operator, "operator user should exist");
     assert.equal(operator.role, "operator");
     assert.equal(verifyPassword("glitch", operator.password_hash), true);
   });
 
   test("Incidents seeded and resolvable", () => {
-    const incidents = testDb.prepare("SELECT * FROM incidents").all();
+    const incidents = dbInstance.prepare("SELECT * FROM incidents").all();
     assert.ok(incidents.length >= 3, "At least 3 initial incidents seeded");
 
-    const resolveStmt = testDb.prepare("UPDATE incidents SET status = 'resolved' WHERE id = 'INC-307'");
+    const resolveStmt = dbInstance.prepare("UPDATE incidents SET status = 'resolved' WHERE id = 'INC-307'");
     resolveStmt.run();
 
-    const updated = testDb.prepare("SELECT status FROM incidents WHERE id = 'INC-307'").get();
+    const updated = dbInstance.prepare("SELECT status FROM incidents WHERE id = 'INC-307'").get();
     assert.equal(updated.status, "resolved");
   });
 });
@@ -97,19 +108,33 @@ describe("System Telemetry Collector", () => {
 });
 
 describe("REST API Endpoints", () => {
+  let serverInstance;
+  let apiDb;
+
   before(async () => {
-    const { db } = initDatabase(TEST_DB_PATH);
-    testDb = db;
-    serverInstance = createServer(db, TEST_DB_PATH);
+    safeUnlink(DB_PATH_2);
+    const { db } = initDatabase(DB_PATH_2);
+    apiDb = db;
+    serverInstance = createServer(apiDb, DB_PATH_2);
     await new Promise((res) => serverInstance.listen(TEST_PORT, "127.0.0.1", res));
   });
 
   after(async () => {
-    await new Promise((res) => serverInstance.close(res));
-    if (testDb) testDb.close();
-    for (const ext of ["", "-wal", "-shm"]) {
-      const p = TEST_DB_PATH + ext;
-      if (fs.existsSync(p)) fs.unlinkSync(p);
+    try {
+      if (serverInstance) {
+        if (typeof serverInstance.closeIdleConnections === "function") {
+          serverInstance.closeIdleConnections();
+        }
+        if (typeof serverInstance.closeAllConnections === "function") {
+          serverInstance.closeAllConnections();
+        }
+        await new Promise((res) => serverInstance.close(res));
+      }
+      if (apiDb) {
+        apiDb.close();
+      }
+    } finally {
+      safeUnlink(DB_PATH_2);
     }
   });
 
@@ -220,4 +245,3 @@ describe("Branch-based SemVer Engine", () => {
     assert.equal(calculateNextVersion("0.1.0", "main"), "0.1.0");
   });
 });
-
