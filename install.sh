@@ -123,6 +123,14 @@ fi
 NPM_VERSION=$(npm -v)
 echo -e "  • npm Version:      ${GREEN}v${NPM_VERSION}${NC}"
 
+# If on Node < 22, ensure better-sqlite3 is installed for older Node runtimes
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo -e "  • Node ${NODE_VERSION} detected (< 22). Installing SQLite driver for Node 20 runtime..."
+  cd "${ROOT_DIR}/services/daemon"
+  npm install --silent
+  cd "${ROOT_DIR}"
+fi
+
 echo -e "\n${BOLD}▶ [2/5] Initializing Embedded SQLite Database...${NC}"
 mkdir -p "$(dirname "$DB_PATH")"
 

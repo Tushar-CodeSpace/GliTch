@@ -1,7 +1,28 @@
-import { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+
+const require = createRequire(import.meta.url);
+
+/**
+ * Dynamically resolves SQLite driver:
+ * 1. Native built-in 'node:sqlite' on Node 22.5+ and Node 24+
+ * 2. 'better-sqlite3' on Node 20.x, Node 18.x, or environments where node:sqlite is absent
+ */
+let DatabaseSync;
+try {
+  DatabaseSync = require("node:sqlite").DatabaseSync;
+} catch {
+  try {
+    DatabaseSync = require("better-sqlite3");
+  } catch {
+    throw new Error(
+      "No SQLite driver available. Node.js 22.5+ includes built-in 'node:sqlite'. " +
+      "For Node 20 or earlier, run 'npm install' in services/daemon to install better-sqlite3."
+    );
+  }
+}
 
 const DEFAULT_DB_PATH = process.env.GLITCH_DB_PATH || path.resolve(process.cwd(), "data", "glitch.db");
 

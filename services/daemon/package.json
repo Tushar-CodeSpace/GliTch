@@ -8,6 +8,8 @@
   "scripts": {
     "start": "node src/index.mjs",
     "db:status": "node -e 'import(\"./src/db.mjs\").then(m => { const { db, dbPath } = m.initDatabase(); console.log(\"DB:\", dbPath); console.log(\"Tables:\", db.prepare(\"SELECT name FROM sqlite_master WHERE type=\\\"table\\\"\").all()); db.close(); })'"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
   }
 }
-

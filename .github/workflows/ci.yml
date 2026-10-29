@@ -75,6 +75,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
+      - name: Install Daemon Dependencies
+        run: |
+          npm --prefix services/daemon install
+
       - name: Run Daemon & SQLite Automated Tests
         run: |
           node --test services/daemon/test/daemon.test.mjs
@@ -168,10 +172,10 @@ jobs:
           cache: npm
           cache-dependency-path: packages/web/package-lock.json
 
-      - name: Install Web Dependencies
-        working-directory: packages/web
+      - name: Install Web & Daemon Dependencies
         run: |
-          npm ci
+          npm --prefix packages/web ci
+          npm --prefix services/daemon install
 
       - name: Build Debian Package with Branch SemVer
         run: |
