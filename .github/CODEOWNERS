@@ -1,0 +1,42 @@
+# ==============================================================================
+# Glitch — GitHub Code Owners Configuration
+# ==============================================================================
+# Learn more about CODEOWNERS:
+# https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# ------------------------------------------------------------------------------
+# Global Default Owners
+# ------------------------------------------------------------------------------
+* @Tushar-CodeSpace
+
+# ------------------------------------------------------------------------------
+# CI/CD Workflows & Repository Automation
+# ------------------------------------------------------------------------------
+/.github/ @Tushar-CodeSpace
+/.github/workflows/ @Tushar-CodeSpace
+
+# ------------------------------------------------------------------------------
+# Core Backend Services & SQLite Daemon
+# ------------------------------------------------------------------------------
+/services/daemon/ @Tushar-CodeSpace
+
+# ------------------------------------------------------------------------------
+# Web Frontend (React, Tailwind CSS & Cyber Terminal UI)
+# ------------------------------------------------------------------------------
+/packages/web/ @Tushar-CodeSpace
+
+# ------------------------------------------------------------------------------
+# CLI Tooling, Debian Packaging & System Installer
+# ------------------------------------------------------------------------------
+/bin/ @Tushar-CodeSpace
+/etc/ @Tushar-CodeSpace
+/scripts/ @Tushar-CodeSpace
+/install.sh @Tushar-CodeSpace
+/uninstall.sh @Tushar-CodeSpace
+
+# ------------------------------------------------------------------------------
+# Root Configuration Files
+# ------------------------------------------------------------------------------
+/package.json @Tushar-CodeSpace
+/README.md @Tushar-CodeSpace
+/.gitignore @Tushar-CodeSpace
