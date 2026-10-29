@@ -14,7 +14,7 @@ GRAY='\033[0;90m'
 BOLD='\033[1m'
 NC='\033[0m'
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || pwd)"
 PORT="4780"
 DB_PATH="${ROOT_DIR}/data/glitch.db"
 INSTALL_CLI=false
@@ -91,6 +91,36 @@ while [[ $# -gt 0 ]]; do
 done
 
 print_banner
+
+# Auto-detect remote pipe execution (e.g. curl -fsSL ... | bash)
+if [ ! -f "${ROOT_DIR}/services/daemon/src/db.mjs" ]; then
+  if ! command -v git >/dev/null 2>&1; then
+    echo -e "  ${RED}❌ Error: git is required for 1-line curl install.${NC}"
+    echo "  Please install git or clone the repository manually."
+    exit 1
+  fi
+
+  if [ "$EUID" -eq 0 ]; then
+    INSTALL_DIR="/opt/glitch"
+    INSTALL_CLI=true
+    INSTALL_APT=true
+  else
+    INSTALL_DIR="${HOME}/.glitch"
+    INSTALL_CLI=true
+  fi
+  echo -e "${BOLD}▶ Remote installation detected. Preparing GliTch workspace...${NC}"
+  echo -e "  • Target directory: ${CYAN}${INSTALL_DIR}${NC}"
+  if [ -d "${INSTALL_DIR}/.git" ]; then
+    echo -e "  • Updating existing repository..."
+    git -C "${INSTALL_DIR}" pull --quiet || true
+  else
+    echo -e "  • Cloning repository from GitHub..."
+    mkdir -p "$(dirname "$INSTALL_DIR")"
+    git clone --depth 1 https://github.com/Tushar-CodeSpace/GliTch.git "${INSTALL_DIR}"
+  fi
+  ROOT_DIR="${INSTALL_DIR}"
+  DB_PATH="${ROOT_DIR}/data/glitch.db"
+fi
 
 echo -e "${BOLD}▶ [1/5] Verifying System Requirements...${NC}"
 

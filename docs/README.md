@@ -24,3 +24,4 @@ Explore the specialized guides below:
 * 🚀 **New to GliTch?** Start with [Installation & Setup](./installation.md).
 * 🗄️ **Working on the Database?** Review the [SQLite Database Guide](./database.md).
 * 🏷️ **Contributing Code?** Read [Branch-Based Versioning](./versioning.md) before opening a pull request.
+

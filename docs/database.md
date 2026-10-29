@@ -152,3 +152,4 @@ You can inspect the database directly using the SQLite CLI:
 ```bash
 sqlite3 data/glitch.db "SELECT * FROM incidents;"
 ```
+

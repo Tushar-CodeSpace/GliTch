@@ -52,3 +52,4 @@ GliTch operates as a local-first, zero-cloud-dependency DevOps copilot and obser
 * **`bin/glitch`**: Unified command-line interface for querying system status, checking DB health, and running remediation playbooks.
 * **`bin/glitch-update`**: Self-contained updater supporting background check mode (`--check-only`) and automated migrations.
 * **APT Hooks**: Configured in `/etc/apt/apt.conf.d/99glitch-update` to trigger checks whenever the system runs `sudo apt update`.
+

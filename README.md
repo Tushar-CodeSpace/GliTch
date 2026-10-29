@@ -33,11 +33,28 @@ For in-depth guides, specifications, and reference manuals, explore the `docs/` 
 
 ## 🚀 Quick Start
 
-### 1. Prerequisites
+### ⚡ 1-Line Quick Install
+Run this single command in your terminal to automatically download, configure, and install GliTch:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/install.sh | bash
+```
+
+Or for complete system setup (APT update integration & global CLI symlinks in `/usr/local/bin`):
+```bash
+curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/install.sh | sudo bash
+```
+
+*(Alternatively with wget: `wget -qO- https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/install.sh | bash`)*
+
+---
+
+### Prerequisites
 - **Node.js 22+ (Active LTS)** or **Node 24+** (provides native built-in `node:sqlite`)
 - **npm**
 
-### 2. Installation
+### Manual / Local Clone Setup
+If you have already cloned the repository locally:
 ```bash
 # Standard local setup
 ./install.sh

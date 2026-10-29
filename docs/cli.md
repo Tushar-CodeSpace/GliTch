@@ -46,3 +46,4 @@ glitch-update [options]
 | `--post-apt` | Executed after `sudo apt upgrade` to pull latest changes, run migrations, and reload services. |
 | `--force` | Forces a re-pull and re-installation regardless of current version. |
 | `--help` | Displays updater help message. |
+

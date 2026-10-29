@@ -63,3 +63,4 @@ In `.github/workflows/ci.yml`, the first job (`version-check`) resolves and vali
 ```
 
 Subsequent build jobs use this resolved SemVer string for artifact naming and Debian `.deb` builds.
+

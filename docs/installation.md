@@ -4,7 +4,25 @@ This guide covers installing GliTch locally, configuring automatic update checks
 
 ---
 
-## 1. Prerequisites
+## 1. Single-Line Quick Install ⚡
+
+To install GliTch directly with a single command without cloning manually:
+
+### User Install (Installs into `~/.glitch` and symlinks CLI to `~/.local/bin`)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/install.sh | bash
+```
+
+### System-Wide Install (Installs into `/opt/glitch`, registers APT hooks and `/usr/local/bin`)
+```bash
+curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/install.sh | sudo bash
+```
+
+*(Alternatively with wget: `wget -qO- https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/install.sh | bash`)*
+
+---
+
+## 2. Prerequisites
 
 * **Operating System**: Linux (Ubuntu 20.04+, Debian 11+, Arch, Fedora) or macOS (Darwin 12+).
 * **Node.js**: **Node 22+ (Active LTS)** or **Node 24+**.
@@ -13,7 +31,7 @@ This guide covers installing GliTch locally, configuring automatic update checks
 
 ---
 
-## 2. Quick Installation
+## 3. Local Clone Installation
 
 Run the universal installer script from the root of the repository:
 
@@ -34,7 +52,7 @@ Run the universal installer script from the root of the repository:
 
 ---
 
-## 3. Automatic Updates with APT (`sudo apt update`)
+## 4. Automatic Updates with APT (`sudo apt update`)
 
 GliTch provides deep integration with Debian & Ubuntu package managers:
 
@@ -64,7 +82,7 @@ Executes: /usr/local/bin/glitch-update --check-only
 
 ---
 
-## 4. Building Debian Package (`.deb`)
+## 5. Building Debian Package (`.deb`)
 
 GliTch includes a packaging utility that bundles the application into a `.deb` package adhering to Debian policies:
 
@@ -82,7 +100,7 @@ sudo apt install ./dist/glitch_0.1.0_all.deb
 
 ---
 
-## 5. Uninstallation
+## 6. Uninstallation
 
 To cleanly remove all GliTch binaries, systemd services, APT hooks, and data:
 
@@ -90,3 +108,4 @@ To cleanly remove all GliTch binaries, systemd services, APT hooks, and data:
 # Run the uninstaller
 sudo ./uninstall.sh
 ```
+
