@@ -150,9 +150,25 @@ cmd_triage() {
 }
 
 cmd_web() {
-  echo -e "${LIME}⚡ Launching Glitch Web Interface...${NC}"
-  cd "${DIR}/packages/web"
-  npm run dev
+  if [ "$2" = "--dev" ] || [ "$1" = "dev" ]; then
+    echo -e "${LIME}⚡ Launching Glitch Web Interface (Development Mode on :5173)...${NC}"
+    cd "${DIR}/packages/web"
+    npm run dev
+    return
+  fi
+
+  if ! is_running; then
+    cmd_start
+  fi
+
+  echo -e "${LIME}⚡ Glitch Web Interface is live at: ${CYAN}http://${HOST}:${PORT}${NC}"
+  echo -e "${GRAY}  (To launch Vite development server with HMR, run: glitch web --dev)${NC}"
+
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "http://${HOST}:${PORT}" >/dev/null 2>&1 || true
+  elif command -v open >/dev/null 2>&1; then
+    open "http://${HOST}:${PORT}" >/dev/null 2>&1 || true
+  fi
 }
 
 # Main Dispatcher

@@ -360,7 +360,8 @@ if [ "$INSTALL_APT" = true ] || [ "$EUID" -eq 0 ]; then
     if command -v systemctl >/dev/null 2>&1; then
       systemctl daemon-reload || true
       systemctl enable glitch-daemon.service 2>/dev/null || true
-      echo -e "  ${GREEN}✔ Registered systemd service: /etc/systemd/system/glitch-daemon.service${NC}"
+      systemctl restart glitch-daemon.service 2>/dev/null || systemctl start glitch-daemon.service 2>/dev/null || true
+      echo -e "  ${GREEN}✔ Started systemd service: glitch-daemon.service${NC}"
     fi
   fi
 fi
@@ -403,27 +404,34 @@ EOF
   echo -e "  Enable with: ${CYAN}systemctl --user enable --now glitch-daemon.service${NC}"
 fi
 
+# Auto-start daemon if not already running
+if ! curl -s "http://127.0.0.1:${PORT}/api/health" >/dev/null 2>&1; then
+  echo -e "\n${BOLD}▶ Launching Glitch Background Daemon...${NC}"
+  "${ROOT_DIR}/bin/glitch" start || true
+fi
+
 echo ""
 echo -e "${LIME}╔══════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${LIME}║             ⚡ GLITCH INSTALLATION SUCCESSFUL ⚡                 ║${NC}"
 echo -e "${LIME}╠══════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}Database Engine:${NC} SQLite 3 (WAL Mode Enabled)                     ${LIME}║${NC}"
 printf "${LIME}║${NC}  ${BOLD}Database File:${NC}   %-47s ${LIME}║${NC}\n" "${DB_PATH}"
-echo -e "${LIME}║${NC}  ${BOLD}Daemon Port:${NC}     http://127.0.0.1:${PORT}                            ${LIME}║${NC}"
-echo -e "${LIME}║${NC}  ${BOLD}Web Interface:${NC}   http://127.0.0.1:5173 (dev) / :4173 (preview)   ${LIME}║${NC}"
+echo -e "${LIME}║${NC}  ${BOLD}Web Interface:${NC}   ${CYAN}http://127.0.0.1:${PORT}${NC} (All-in-One Console)          ${LIME}║${NC}"
+echo -e "${LIME}║${NC}  ${BOLD}Daemon API:${NC}      http://127.0.0.1:${PORT}/api/health                   ${LIME}║${NC}"
+echo -e "${LIME}║${NC}  ${BOLD}Dev Server:${NC}      http://127.0.0.1:5173 (glitch web / npm run web)  ${LIME}║${NC}"
 echo -e "${LIME}║                                                                  ║${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}Default Operator Credentials:${NC}                                   ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    • ${CYAN}admin${NC}    / ${CYAN}admin${NC}   (System Administrator)                   ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    • ${CYAN}operator${NC} / ${CYAN}glitch${NC}  (Local DevOps Operator)                  ${LIME}║${NC}"
 echo -e "${LIME}║                                                                  ║${NC}"
-echo -e "${LIME}║${NC}  ${BOLD}Quick Start Commands:${NC}                                            ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    • Start Daemon:   ${GREEN}./bin/glitch start${NC} (or npm run daemon)       ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    • Check Status:   ${GREEN}./bin/glitch status${NC}                          ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    • Inspect DB:     ${GREEN}./bin/glitch db${NC}                              ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    • Start Web UI:   ${GREEN}./bin/glitch web${NC}                             ${LIME}║${NC}"
+echo -e "${LIME}║${NC}  ${BOLD}CLI Commands:${NC}                                                    ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    • Open Web UI:    ${GREEN}glitch web${NC}                                   ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    • Check Status:   ${GREEN}glitch status${NC}                                ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    • Inspect DB:     ${GREEN}glitch db${NC}                                    ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    • Restart:        ${GREEN}glitch restart${NC}                               ${LIME}║${NC}"
 echo -e "${LIME}║                                                                  ║${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}APT Integration:${NC}                                                 ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    Run ${CYAN}sudo ./install.sh --apt${NC} to hook into ${CYAN}sudo apt update${NC}       ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    and ${CYAN}sudo apt upgrade${NC} for automated updates!                    ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    'sudo apt update' checks for updates automatically!            ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    'sudo apt upgrade' upgrades GliTch seamlessly.                 ${LIME}║${NC}"
 echo -e "${LIME}╚══════════════════════════════════════════════════════════════════╝${NC}"
 echo ""

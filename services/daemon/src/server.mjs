@@ -1,13 +1,37 @@
 import http from "node:http";
 import crypto from "node:crypto";
 import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { collectDeviceMetrics } from "./system.mjs";
 import { hashPassword, verifyPassword } from "./db.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const DEFAULT_STATIC_DIR = path.resolve(__dirname, "../../../packages/web/dist");
+
+const MIME_TYPES = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "application/javascript; charset=utf-8",
+  ".mjs": "application/javascript; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".gif": "image/gif",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff": "font/woff",
+  ".woff2": "font/woff2",
+  ".ttf": "font/ttf",
+};
 
 /**
  * Creates and returns the Node HTTP server.
  */
-export function createServer(db, dbPath) {
+export function createServer(db, dbPath, options = {}) {
+  const staticDir = options.staticDir || process.env.GLITCH_STATIC_DIR || DEFAULT_STATIC_DIR;
+
   const server = http.createServer(async (req, res) => {
     // Enable CORS for web UI
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -274,6 +298,14 @@ export function createServer(db, dbPath) {
         });
       }
 
+      // Static File Serving (Web UI in packages/web/dist)
+      if (req.method === "GET" && !pathname.startsWith("/api/")) {
+        const filePath = resolveStaticFile(staticDir, pathname);
+        if (filePath) {
+          return serveFile(res, filePath);
+        }
+      }
+
       // Fallback 404
       return sendJson(res, 404, {
         error: `Endpoint not found: ${req.method} ${pathname}`,
@@ -288,6 +320,48 @@ export function createServer(db, dbPath) {
   });
 
   return server;
+}
+
+function resolveStaticFile(staticDir, urlPath) {
+  if (!fs.existsSync(staticDir)) return null;
+
+  // Prevent directory traversal attacks
+  const safePath = path.normalize(urlPath).replace(/^(\.\.[\/\\])+/, "");
+  let fullPath = path.join(staticDir, safePath);
+
+  if (fs.existsSync(fullPath) && fs.statSync(fullPath).isDirectory()) {
+    fullPath = path.join(fullPath, "index.html");
+  }
+
+  if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
+    return fullPath;
+  }
+
+  // SPA fallback for HTML5 client-side routing
+  const indexPath = path.join(staticDir, "index.html");
+  if (fs.existsSync(indexPath)) {
+    return indexPath;
+  }
+
+  return null;
+}
+
+function serveFile(res, filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  const contentType = MIME_TYPES[ext] || "application/octet-stream";
+
+  try {
+    const stat = fs.statSync(filePath);
+    res.writeHead(200, {
+      "Content-Type": contentType,
+      "Content-Length": stat.size,
+      "Cache-Control": ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable",
+    });
+    const stream = fs.createReadStream(filePath);
+    stream.pipe(res);
+  } catch {
+    sendJson(res, 404, { error: "File not found" });
+  }
 }
 
 function sendJson(res, statusCode, data) {
