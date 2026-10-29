@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Glitch Autonomous Updater — APT Hook & Manual Upgrade Utility
+# ==============================================================================
+set -e
+
+# Configuration
+INSTALL_DIR="${GLITCH_DIR:-/opt/glitch}"
+if [ ! -d "$INSTALL_DIR" ]; then
+  # Fallback to current repository directory if running locally
+  INSTALL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+fi
+
+STAMP_FILE="/tmp/glitch-update-pending"
+LOG_FILE="/var/log/glitch-update.log"
+CHECK_ONLY=false
+FORCE_UPGRADE=false
+
+# Colors
+LIME='\033[38;5;155m'
+GREEN='\033[0;32m'
+AMBER='\033[0;33m'
+CYAN='\033[0;36m'
+RED='\033[0;31m'
+NC='\033[0m'
+BOLD='\033[1m'
+
+# Parse Flags
+for arg in "$@"; do
+  case "$arg" in
+    --check-only)
+      CHECK_ONLY=true
+      ;;
+    --upgrade|--apply)
+      FORCE_UPGRADE=true
+      ;;
+    --help|-h)
+      echo "Glitch Autonomous Updater"
+      echo "Usage: glitch-update [--check-only | --upgrade]"
+      exit 0
+      ;;
+  esac
+done
+
+# ------------------------------------------------------------------------------
+# 1. Check for Available Updates (Triggered on 'sudo apt update')
+# ------------------------------------------------------------------------------
+check_updates() {
+  if [ -d "${INSTALL_DIR}/.git" ]; then
+    cd "$INSTALL_DIR"
+    # Fetch origin silently with a 5 second timeout to keep apt update fast
+    if git fetch origin main --quiet --timeout=5 2>/dev/null; then
+      LOCAL_COMMIT=$(git rev-parse HEAD 2>/dev/null)
+      REMOTE_COMMIT=$(git rev-parse origin/main 2>/dev/null)
+
+      if [ "$LOCAL_COMMIT" != "$REMOTE_COMMIT" ]; then
+        touch "$STAMP_FILE"
+        echo -e "${LIME}⚡ [Glitch] New update available!${NC} (Will be applied on next ${BOLD}'sudo apt upgrade'${NC} or run ${BOLD}'glitch-update'${NC})"
+        return 0
+      else
+        rm -f "$STAMP_FILE"
+      fi
+    fi
+  fi
+  return 0
+}
+
+# ------------------------------------------------------------------------------
+# 2. Apply Update & Migrate (Triggered on 'sudo apt upgrade' or manual run)
+# ------------------------------------------------------------------------------
+apply_update() {
+  # If check-only or no pending update and not forced, exit cleanly
+  if [ "$FORCE_UPGRADE" = false ] && [ ! -f "$STAMP_FILE" ]; then
+    return 0
+  fi
+
+  echo -e "\n${LIME}⚡ [Glitch] Updating Glitch Local DevOps Toolkit...${NC}"
+
+  if [ -d "${INSTALL_DIR}/.git" ]; then
+    cd "$INSTALL_DIR"
+    echo -e "  • Pulling upstream changes..."
+    git pull origin main --quiet || true
+
+    # Backup SQLite DB prior to migration
+    if [ -f "${INSTALL_DIR}/data/glitch.db" ]; then
+      cp "${INSTALL_DIR}/data/glitch.db" "${INSTALL_DIR}/data/glitch.db.backup-$(date +%s)"
+    fi
+
+    # Run database schema migrations
+    echo -e "  • Migrating SQLite database..."
+    node -e '
+      import("./services/daemon/src/db.mjs").then(m => {
+        const { db, dbPath } = m.initDatabase();
+        console.log("    ✔ SQLite database schema migrated at: " + dbPath);
+        db.close();
+      }).catch(() => {});
+    ' 2>/dev/null || true
+
+    # Rebuild frontend assets if web package exists
+    if [ -d "${INSTALL_DIR}/packages/web" ]; then
+      echo -e "  • Rebuilding web UI bundle..."
+      cd "${INSTALL_DIR}/packages/web"
+      npm install --silent 2>/dev/null || true
+      npm run build --silent 2>/dev/null || true
+      cd "$INSTALL_DIR"
+    fi
+
+    # Restart daemon if running under systemd or PID
+    if systemctl is-active --quiet glitch-daemon 2>/dev/null; then
+      echo -e "  • Restarting glitch-daemon service..."
+      systemctl restart glitch-daemon
+    elif [ -x "${INSTALL_DIR}/bin/glitch" ]; then
+      "${INSTALL_DIR}/bin/glitch" restart >/dev/null 2>&1 || true
+    fi
+
+    rm -f "$STAMP_FILE"
+    echo -e "${GREEN}✔ [Glitch] Successfully updated to latest version!${NC}\n"
+  fi
+}
+
+if [ "$CHECK_ONLY" = true ]; then
+  check_updates
+else
+  apply_update
+fi
+

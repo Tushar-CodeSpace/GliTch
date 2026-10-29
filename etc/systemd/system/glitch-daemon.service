@@ -1,0 +1,25 @@
+[Unit]
+Description=Glitch Local DevOps Daemon (SQLite)
+Documentation=https://github.com/Tushar-K-A/GliTch
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/glitch
+ExecStart=/usr/bin/node /opt/glitch/services/daemon/src/index.mjs
+Restart=on-failure
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=GLITCH_PORT=4780
+Environment=GLITCH_DB_PATH=/opt/glitch/data/glitch.db
+
+# Sandboxing & Security Hardening
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+

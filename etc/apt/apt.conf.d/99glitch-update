@@ -1,0 +1,10 @@
+// Glitch Autonomous DevOps SRE — APT Hooks
+// Triggers update check on 'sudo apt update' and auto-upgrade on 'sudo apt upgrade'
+
+APT::Update::Post-Invoke-Success {
+    "if [ -x /usr/local/bin/glitch-update ]; then /usr/local/bin/glitch-update --check-only 2>/dev/null || true; elif [ -x /usr/bin/glitch-update ]; then /usr/bin/glitch-update --check-only 2>/dev/null || true; fi";
+};
+
+DPkg::Post-Invoke {
+    "if [ -x /usr/local/bin/glitch-update ]; then /usr/local/bin/glitch-update --upgrade 2>/dev/null || true; elif [ -x /usr/bin/glitch-update ]; then /usr/bin/glitch-update --upgrade 2>/dev/null || true; fi";
+};

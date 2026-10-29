@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.DS_Store
+*.local
+
+# SQLite local database and journals
+data/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3

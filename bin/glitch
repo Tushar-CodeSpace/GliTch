@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+# Glitch CLI — Local DevOps & Autonomous SRE Interface
+set -e
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PID_FILE="${DIR}/data/glitch.pid"
+PORT="${GLITCH_PORT:-4780}"
+HOST="${GLITCH_HOST:-127.0.0.1}"
+DAEMON_SCRIPT="${DIR}/services/daemon/src/index.mjs"
+
+# Color Codes
+GREEN='\033[0;32m'
+LIME='\033[38;5;155m'
+CYAN='\033[0;36m'
+AMBER='\033[0;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+BOLD='\033[1m'
+
+show_banner() {
+  echo -e "${LIME}"
+  cat << "EOF"
+    __  ___  __         __  
+   / /_/ /  / /_ ____  / /_ 
+  / __/ /  / __// __ \/ __ \
+ / /_/ /__/ /_ / /_/ / / / /
+ \__/_/____\__(_)___/_/ /_/ 
+      LOCAL DEVOPS TOOLKIT
+EOF
+  echo -e "${NC}"
+}
+
+usage() {
+  show_banner
+  echo -e "${BOLD}Usage:${NC} glitch <command> [options]"
+  echo ""
+  echo -e "${BOLD}Commands:${NC}"
+  echo -e "  ${GREEN}start${NC}         Start the local SQLite daemon in the background"
+  echo -e "  ${GREEN}stop${NC}          Stop the running daemon"
+  echo -e "  ${GREEN}restart${NC}       Restart the local daemon"
+  echo -e "  ${GREEN}status${NC}        Check daemon status, host vitals, and SQLite health"
+  echo -e "  ${GREEN}db${NC}            Inspect SQLite tables, row counts, and file size"
+  echo -e "  ${GREEN}triage${NC}        List active incidents and remediation playbooks"
+  echo -e "  ${GREEN}web${NC}           Launch the web interface (port 5173 / preview 4173)"
+  echo -e "  ${GREEN}version${NC}       Display version information"
+  echo -e "  ${GREEN}help${NC}          Show this help message"
+  echo ""
+}
+
+is_running() {
+  if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE")
+    if kill -0 "$PID" 2>/dev/null; then
+      return 0
+    fi
+  fi
+  # Also check if port 4780 responds to health check
+  if curl -s "http://${HOST}:${PORT}/api/health" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
+}
+
+cmd_start() {
+  if is_running; then
+    echo -e "${AMBER}⚡ Glitch daemon is already running at http://${HOST}:${PORT}${NC}"
+    exit 0
+  fi
+
+  echo -e "${LIME}⚡ Starting Glitch Local DevOps Daemon (SQLite)...${NC}"
+  mkdir -p "${DIR}/data"
+  nohup node "$DAEMON_SCRIPT" > "${DIR}/data/daemon.log" 2>&1 &
+  echo $! > "$PID_FILE"
+
+  # Wait up to 5 seconds for health check
+  for i in {1..10}; do
+    if curl -s "http://${HOST}:${PORT}/api/health" >/dev/null 2>&1; then
+      echo -e "${GREEN}✔ Daemon started successfully!${NC}"
+      echo -e "  • Endpoint:   ${CYAN}http://${HOST}:${PORT}${NC}"
+      echo -e "  • Database:   ${CYAN}${DIR}/data/glitch.db${NC}"
+      echo -e "  • Process ID: ${CYAN}$(cat "$PID_FILE")${NC}"
+      echo -e "  • Logs:       ${CYAN}${DIR}/data/daemon.log${NC}"
+      exit 0
+    fi
+    sleep 0.5
+  done
+
+  echo -e "${RED}❌ Failed to start daemon. Check logs at ${DIR}/data/daemon.log${NC}"
+  exit 1
+}
+
+cmd_stop() {
+  if [ -f "$PID_FILE" ]; then
+    PID=$(cat "$PID_FILE")
+    if kill -0 "$PID" 2>/dev/null; then
+      echo -e "${AMBER}⚡ Stopping Glitch daemon (PID $PID)...${NC}"
+      kill "$PID" 2>/dev/null || true
+      rm -f "$PID_FILE"
+      echo -e "${GREEN}✔ Daemon stopped.${NC}"
+      exit 0
+    fi
+    rm -f "$PID_FILE"
+  fi
+
+  # Fallback: check if listening process on port 4780
+  PORT_PID=$(lsof -ti :$PORT 2>/dev/null || true)
+  if [ -n "$PORT_PID" ]; then
+    echo -e "${AMBER}⚡ Terminating process on port $PORT (PID $PORT_PID)...${NC}"
+    kill -9 $PORT_PID 2>/dev/null || true
+    echo -e "${GREEN}✔ Process stopped.${NC}"
+    exit 0
+  fi
+
+  echo -e "${AMBER}Glitch daemon is not currently running.${NC}"
+}
+
+cmd_status() {
+  show_banner
+  echo -e "${BOLD}--- DAEMON STATUS ---${NC}"
+  if curl -s "http://${HOST}:${PORT}/api/health" >/dev/null 2>&1; then
+    HEALTH=$(curl -s "http://${HOST}:${PORT}/api/health")
+    METRICS=$(curl -s "http://${HOST}:${PORT}/api/metrics")
+    echo -e "Status:     ${GREEN}● ONLINE${NC} (http://${HOST}:${PORT})"
+    echo -e "Version:    $(echo "$HEALTH" | grep -o '"version":"[^"]*"' | cut -d'"' -f4)"
+    echo -e "Database:   ${CYAN}$(echo "$HEALTH" | grep -o '"db_path":"[^"]*"' | cut -d'"' -f4)${NC}"
+    echo ""
+    echo -e "${BOLD}--- HOST TELEMETRY ---${NC}"
+    echo -e "Hostname:   $(echo "$METRICS" | grep -o '"hostname":"[^"]*"' | cut -d'"' -f4)"
+    echo -e "Platform:   $(echo "$METRICS" | grep -o '"platform":"[^"]*"' | cut -d'"' -f4)"
+    echo -e "CPU Usage:  ${LIME}$(echo "$METRICS" | grep -o '"cpu_percent":[0-9.]*' | cut -d':' -f2)%${NC}"
+    echo -e "RAM Usage:  ${LIME}$(echo "$METRICS" | grep -o '"used_percent":[0-9.]*' | head -n1 | cut -d':' -f2)%${NC}"
+    echo -e "Disk Usage: ${LIME}$(echo "$METRICS" | grep -o '"used_percent":[0-9.]*' | tail -n1 | cut -d':' -f2)%${NC}"
+  else
+    echo -e "Status:     ${RED}○ OFFLINE${NC} (Run 'glitch start' to launch daemon)"
+  fi
+}
+
+cmd_db() {
+  node "${DIR}/services/daemon/src/cli.mjs" db
+}
+
+cmd_triage() {
+  node "${DIR}/services/daemon/src/cli.mjs" triage
+}
+
+cmd_web() {
+  echo -e "${LIME}⚡ Launching Glitch Web Interface...${NC}"
+  cd "${DIR}/packages/web"
+  npm run dev
+}
+
+# Main Dispatcher
+case "$1" in
+  start)
+    cmd_start
+    ;;
+  stop)
+    cmd_stop
+    ;;
+  restart)
+    cmd_stop || true
+    sleep 1
+    cmd_start
+    ;;
+  status)
+    cmd_status
+    ;;
+  db)
+    cmd_db
+    ;;
+  triage)
+    cmd_triage
+    ;;
+  web)
+    cmd_web
+    ;;
+  version|-v|--version)
+    CURRENT_VER=$(node -e "try { console.log(JSON.parse(fs.readFileSync('${DIR}/package.json')).version); } catch { console.log('0.1.0'); }" 2>/dev/null || echo "0.1.0")
+    echo "glitch v${CURRENT_VER}"
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    if [ -z "$1" ]; then
+      usage
+    else
+      echo -e "${RED}Unknown command: $1${NC}\n"
+      usage
+      exit 1
+    fi
+    ;;
+esac
