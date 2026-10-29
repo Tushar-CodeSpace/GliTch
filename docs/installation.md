@@ -22,12 +22,13 @@ curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/instal
 
 ---
 
-## 2. Prerequisites
+## 2. Prerequisites & Auto-Installation
 
-* **Operating System**: Linux (Ubuntu 20.04+, Debian 11+, Arch, Fedora) or macOS (Darwin 12+).
-* **Node.js**: **Node 22+ (Active LTS)** or **Node 24+**.
-  > Note: Node 22+ includes native `node:sqlite`, eliminating native binary C++ compilation issues.
+* **Operating System**: Linux (Ubuntu 20.04+, Debian 11+, Arch, Fedora, RHEL) or macOS (Darwin 12+).
+* **Node.js**: **Node 22+ (Active LTS)** or **Node 24+** (provides native built-in `node:sqlite`).
 * **npm**: Node package manager.
+
+> ⚡ **Automatic Resolution**: If Node.js (v22+) or npm is not installed or is outdated, `./install.sh` will automatically detect your package manager (APT, DNF, Pacman, Homebrew, or portable binary fallback) and install Node.js 22 LTS and npm for you.
 
 ---
 

@@ -129,27 +129,154 @@ OS_NAME=$(uname -s)
 ARCH_NAME=$(uname -m)
 echo -e "  • Operating System: ${CYAN}${OS_NAME} (${ARCH_NAME})${NC}"
 
+install_nodejs() {
+  echo -e "  ${AMBER}⚡ Auto-installing Node.js 22 (LTS) & npm...${NC}"
+
+  # 1. If NVM is already installed in the environment
+  if [ -s "$HOME/.nvm/nvm.sh" ]; then
+    echo -e "  • Found existing NVM. Installing Node.js 22..."
+    # shellcheck source=/dev/null
+    . "$HOME/.nvm/nvm.sh"
+    nvm install 22
+    nvm use 22
+    return
+  fi
+
+  # 2. If running as root or sudo is available, use official system package manager
+  if [ "$EUID" -eq 0 ] || command -v sudo >/dev/null 2>&1; then
+    SUDO_CMD=""
+    if [ "$EUID" -ne 0 ]; then
+      SUDO_CMD="sudo"
+    fi
+
+    # Debian / Ubuntu / Mint / Pop!_OS
+    if command -v apt-get >/dev/null 2>&1; then
+      echo -e "  • Adding NodeSource repository for Node.js 22.x..."
+      curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO_CMD -E bash -
+      echo -e "  • Installing nodejs via apt-get..."
+      $SUDO_CMD apt-get install -y nodejs
+      return
+    # Fedora / RHEL / Rocky / AlmaLinux
+    elif command -v dnf >/dev/null 2>&1; then
+      echo -e "  • Adding NodeSource repository for Node.js 22.x..."
+      curl -fsSL https://rpm.nodesource.com/setup_22.x | $SUDO_CMD bash -
+      echo -e "  • Installing nodejs via dnf..."
+      $SUDO_CMD dnf install -y nodejs
+      return
+    elif command -v yum >/dev/null 2>&1; then
+      curl -fsSL https://rpm.nodesource.com/setup_22.x | $SUDO_CMD bash -
+      $SUDO_CMD yum install -y nodejs
+      return
+    # Arch Linux
+    elif command -v pacman >/dev/null 2>&1; then
+      echo -e "  • Installing nodejs and npm via pacman..."
+      $SUDO_CMD pacman -Sy --noconfirm nodejs npm
+      return
+    # macOS Homebrew
+    elif [ "$(uname -s)" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+      echo -e "  • Installing node@22 via Homebrew..."
+      brew install node@22
+      brew link --overwrite --force node@22 || true
+      export PATH="/opt/homebrew/opt/node@22/bin:/usr/local/opt/node@22/bin:$PATH"
+      return
+    fi
+  fi
+
+  # 3. User-level portable binary fallback (works without root / sudo privileges)
+  echo -e "  • Downloading official Node.js 22 standalone binary..."
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64) ARCH_NODE="x64" ;;
+    aarch64|arm64) ARCH_NODE="arm64" ;;
+    armv7l) ARCH_NODE="armv7l" ;;
+    *) ARCH_NODE="x64" ;;
+  esac
+
+  PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+  NODE_URL="https://nodejs.org/dist/latest-v22.x"
+  TARBALL_NAME=$(curl -fsSL "$NODE_URL/SHASUMS256.txt" | grep "node-v22.*-${PLATFORM}-${ARCH_NODE}.tar.gz" | head -n1 | awk '{print $2}')
+
+  if [ -n "$TARBALL_NAME" ]; then
+    TMP_DIR=$(mktemp -d)
+    INSTALL_TARGET="${HOME}/.local"
+    mkdir -p "$INSTALL_TARGET"
+    curl -fsSL "$NODE_URL/$TARBALL_NAME" -o "$TMP_DIR/$TARBALL_NAME"
+    tar -xzf "$TMP_DIR/$TARBALL_NAME" -C "$TMP_DIR"
+    EXTRACTED_DIR=$(find "$TMP_DIR" -maxdepth 1 -type d -name "node-v22*")
+    cp -r "$EXTRACTED_DIR"/* "$INSTALL_TARGET/"
+    rm -rf "$TMP_DIR"
+    export PATH="${INSTALL_TARGET}/bin:$PATH"
+    echo -e "  ${GREEN}✔ Node.js installed to ${INSTALL_TARGET}/bin${NC}"
+    return
+  fi
+
+  # 4. Fallback to NVM automated setup
+  echo -e "  • Installing NVM..."
+  curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+  # shellcheck source=/dev/null
+  [ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+  nvm install 22
+  nvm use 22
+}
+
+install_npm() {
+  echo -e "  ${AMBER}⚡ Auto-installing npm...${NC}"
+  if [ "$EUID" -eq 0 ] || command -v sudo >/dev/null 2>&1; then
+    SUDO_CMD=""
+    [ "$EUID" -ne 0 ] && SUDO_CMD="sudo"
+    if command -v apt-get >/dev/null 2>&1; then
+      $SUDO_CMD apt-get install -y npm
+      return
+    elif command -v dnf >/dev/null 2>&1; then
+      $SUDO_CMD dnf install -y npm
+      return
+    elif command -v pacman >/dev/null 2>&1; then
+      $SUDO_CMD pacman -Sy --noconfirm npm
+      return
+    fi
+  fi
+  if command -v corepack >/dev/null 2>&1; then
+    corepack enable || true
+  fi
+}
+
 # Check Node.js
-if ! command -v node >/dev/null 2>&1; then
-  echo -e "  ${RED}❌ Error: Node.js is required but not installed.${NC}"
-  echo "  Please install Node.js 22+ (Node 22 LTS or Node 24 recommended)."
-  exit 1
+NODE_MAJOR=0
+if command -v node >/dev/null 2>&1; then
+  NODE_VERSION=$(node -v | sed 's/v//')
+  NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'.' -f1)
 fi
 
-NODE_VERSION=$(node -v | sed 's/v//')
-NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'.' -f1)
+if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 22 ]; then
+  if ! command -v node >/dev/null 2>&1; then
+    echo -e "  ${AMBER}⚠ Node.js is not installed.${NC}"
+  else
+    echo -e "  ${AMBER}⚠ Node.js v${NODE_VERSION} is installed, but Node.js 22+ (LTS) is required.${NC}"
+  fi
+  install_nodejs
 
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo -e "  ${RED}❌ Error: Node.js 22+ (LTS) is required for built-in SQLite (found v${NODE_VERSION}).${NC}"
-  echo -e "  Please update Node.js using: nvm install 22  or  nvm use 22"
-  exit 1
+  # Re-check after installation
+  if command -v node >/dev/null 2>&1; then
+    NODE_VERSION=$(node -v | sed 's/v//')
+    NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'.' -f1)
+  fi
+
+  if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 22 ]; then
+    echo -e "  ${RED}❌ Error: Failed to auto-install Node.js 22+. Please install Node.js 22+ manually.${NC}"
+    exit 1
+  fi
 fi
 echo -e "  • Node.js Version:  ${GREEN}v${NODE_VERSION} (supported)${NC}"
 
 # Check npm
 if ! command -v npm >/dev/null 2>&1; then
-  echo -e "  ${RED}❌ Error: npm package manager is required.${NC}"
-  exit 1
+  echo -e "  ${AMBER}⚠ npm is not installed.${NC}"
+  install_npm
+
+  if ! command -v npm >/dev/null 2>&1; then
+    echo -e "  ${RED}❌ Error: Failed to auto-install npm. Please install npm manually.${NC}"
+    exit 1
+  fi
 fi
 NPM_VERSION=$(npm -v)
 echo -e "  • npm Version:      ${GREEN}v${NPM_VERSION}${NC}"

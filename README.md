@@ -49,9 +49,10 @@ curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/instal
 
 ---
 
-### Prerequisites
+### Prerequisites & Auto-Installation
 - **Node.js 22+ (Active LTS)** or **Node 24+** (provides native built-in `node:sqlite`)
 - **npm**
+> 💡 *Note:* The installer automatically installs Node.js 22 (LTS) and npm if they are missing or if your current Node version is older than 22.
 
 ### Manual / Local Clone Setup
 If you have already cloned the repository locally:
