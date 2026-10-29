@@ -72,7 +72,7 @@ npm run version:bump
 ## 🚀 Getting Started
 
 ### Prerequisites
-- Node.js 18+ (Node 20+ or Node 24+ recommended)
+- Node.js 22+ (Active LTS) or Node 24+ (provides native built-in 'node:sqlite')
 - npm
 
 ### 1-Step Installation & Setup

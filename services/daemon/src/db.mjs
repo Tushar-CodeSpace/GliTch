@@ -7,18 +7,18 @@ const require = createRequire(import.meta.url);
 
 /**
  * Dynamically resolves SQLite driver:
- * 1. 'better-sqlite3' for maximum cross-version stability (Node 18, 20, 22, 24)
- * 2. Native built-in 'node:sqlite' on Node 22.5+ and Node 24+ when no npm packages are installed
+ * 1. Native built-in 'node:sqlite' on Node 22.5+ & Node 24+ (zero external dependencies)
+ * 2. 'better-sqlite3' fallback if present in environment
  */
 let DatabaseSync;
 try {
-  DatabaseSync = require("better-sqlite3");
+  DatabaseSync = require("node:sqlite").DatabaseSync;
 } catch {
   try {
-    DatabaseSync = require("node:sqlite").DatabaseSync;
+    DatabaseSync = require("better-sqlite3");
   } catch {
     throw new Error(
-      "No SQLite driver available. Please run 'npm install' in services/daemon or use Node.js 22.5+."
+      "No SQLite driver available. GliTch requires Node.js 22.5+ (LTS) with built-in 'node:sqlite'."
     );
   }
 }

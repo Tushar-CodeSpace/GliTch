@@ -102,15 +102,16 @@ echo -e "  • Operating System: ${CYAN}${OS_NAME} (${ARCH_NAME})${NC}"
 # Check Node.js
 if ! command -v node >/dev/null 2>&1; then
   echo -e "  ${RED}❌ Error: Node.js is required but not installed.${NC}"
-  echo "  Please install Node.js 18+ (Node 20+ or 24+ recommended)."
+  echo "  Please install Node.js 22+ (Node 22 LTS or Node 24 recommended)."
   exit 1
 fi
 
 NODE_VERSION=$(node -v | sed 's/v//')
 NODE_MAJOR=$(echo "$NODE_VERSION" | cut -d'.' -f1)
 
-if [ "$NODE_MAJOR" -lt 18 ]; then
-  echo -e "  ${RED}❌ Error: Node.js version 18.0.0+ is required (found v${NODE_VERSION}).${NC}"
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo -e "  ${RED}❌ Error: Node.js 22+ (LTS) is required for built-in SQLite (found v${NODE_VERSION}).${NC}"
+  echo -e "  Please update Node.js using: nvm install 22  or  nvm use 22"
   exit 1
 fi
 echo -e "  • Node.js Version:  ${GREEN}v${NODE_VERSION} (supported)${NC}"
@@ -122,14 +123,6 @@ if ! command -v npm >/dev/null 2>&1; then
 fi
 NPM_VERSION=$(npm -v)
 echo -e "  • npm Version:      ${GREEN}v${NPM_VERSION}${NC}"
-
-# If on Node < 22, ensure better-sqlite3 is installed for older Node runtimes
-if [ "$NODE_MAJOR" -lt 22 ]; then
-  echo -e "  • Node ${NODE_VERSION} detected (< 22). Installing SQLite driver for Node 20 runtime..."
-  cd "${ROOT_DIR}/services/daemon"
-  npm install --silent
-  cd "${ROOT_DIR}"
-fi
 
 echo -e "\n${BOLD}▶ [2/5] Initializing Embedded SQLite Database...${NC}"
 mkdir -p "$(dirname "$DB_PATH")"

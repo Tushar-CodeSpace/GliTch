@@ -19,6 +19,9 @@
     "db:status": "curl -s http://127.0.0.1:4780/api/db/status || node -e 'import(\"./services/daemon/src/db.mjs\").then(m => { const { db, dbPath } = m.initDatabase(); console.log(\"DB:\", dbPath); console.log(\"Tables:\", db.prepare(\"SELECT name FROM sqlite_master WHERE type=\\\"table\\\"\").all()); db.close(); })'",
     "db:init": "node -e 'import(\"./services/daemon/src/db.mjs\").then(m => { const { dbPath } = m.initDatabase(); console.log(\"✔ SQLite database initialized at:\", dbPath); })'",
     "start": "node services/daemon/src/index.mjs"
+  },
+  "engines": {
+    "node": ">=22.5.0"
   }
 }
 
