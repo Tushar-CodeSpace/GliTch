@@ -18,14 +18,60 @@ type Server struct {
 	mux       *http.ServeMux
 }
 
+func resolveStaticDir(staticDir string) string {
+	// If explicitly provided and contains index.html, use it
+	if staticDir != "" {
+		if _, err := os.Stat(filepath.Join(staticDir, "index.html")); err == nil {
+			return staticDir
+		}
+	}
+
+	// Check environment variable
+	if envDir := os.Getenv("GLITCH_STATIC_DIR"); envDir != "" {
+		if _, err := os.Stat(filepath.Join(envDir, "index.html")); err == nil {
+			return envDir
+		}
+	}
+
+	// Check relative to executable
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		candidate := filepath.Join(exeDir, "..", "packages", "web", "dist")
+		if _, err := os.Stat(filepath.Join(candidate, "index.html")); err == nil {
+			return candidate
+		}
+	}
+
+	// Check relative to current working directory
+	if cwd, err := os.Getwd(); err == nil {
+		candidate := filepath.Join(cwd, "packages", "web", "dist")
+		if _, err := os.Stat(filepath.Join(candidate, "index.html")); err == nil {
+			return candidate
+		}
+	}
+
+	// Check standard global install paths
+	for _, candidate := range []string{
+		"/opt/glitch/packages/web/dist",
+		"/usr/share/glitch/packages/web/dist",
+	} {
+		if _, err := os.Stat(filepath.Join(candidate, "index.html")); err == nil {
+			return candidate
+		}
+	}
+
+	if staticDir != "" {
+		return staticDir
+	}
+	cwd, _ := os.Getwd()
+	return filepath.Join(cwd, "packages", "web", "dist")
+}
+
 func NewServer(db *sql.DB, dbPath, staticDir, version string) *Server {
 	if version == "" {
 		version = "0.1.0"
 	}
-	if staticDir == "" {
-		cwd, _ := os.Getwd()
-		staticDir = filepath.Join(cwd, "packages", "web", "dist")
-	}
+	staticDir = resolveStaticDir(staticDir)
 
 	s := &Server{
 		db:        db,

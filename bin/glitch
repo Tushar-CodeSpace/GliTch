@@ -47,7 +47,7 @@ usage() {
   echo -e "  ${GREEN}status${NC}        Check daemon status, host vitals, and SQLite health"
   echo -e "  ${GREEN}db${NC}            Inspect SQLite tables, row counts, and file size"
   echo -e "  ${GREEN}triage${NC}        List active incidents and remediation playbooks"
-  echo -e "  ${GREEN}web${NC}           Launch the web interface (port 5173 / preview 4173)"
+  echo -e "  ${GREEN}web${NC}           Launch web console (http://127.0.0.1:4780, or --dev for Vite)"
   echo -e "  ${GREEN}version${NC}       Display version information"
   echo -e "  ${GREEN}help${NC}          Show this help message"
   echo ""

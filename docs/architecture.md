@@ -6,7 +6,7 @@ GliTch operates as a local-first, zero-cloud-dependency DevOps copilot and obser
 ┌─────────────────────────────────────────────────────────────────┐
 │                    User Interface / Browser                     │
 │            React + TypeScript + Vite + TailwindCSS              │
-│                (Digital Cyber Terminal on :5173)                │
+│       (Digital Cyber Console served on :4780 / Dev on :5173)    │
 └────────────────────────────────┬────────────────────────────────┘
                                  │ HTTP / JSON API (:4780)
 ┌────────────────────────────────▼────────────────────────────────┐

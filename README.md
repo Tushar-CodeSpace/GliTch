@@ -64,20 +64,25 @@ If you have already cloned the repository locally:
 sudo ./install.sh --apt --cli
 ```
 
-### 3. Running Services
+### 3. Accessing GliTch
 
-#### Start the Local Daemon (Port 4780)
+#### Launch the Web Console & API (Port 4780)
+The native Go daemon serves both the complete Web Console and the REST API out of the box:
 ```bash
 ./bin/glitch start
-# or
-npm run daemon
+# or open in browser directly:
+./bin/glitch web
 ```
+Visit: **`http://127.0.0.1:4780`**
 
-#### Start the Web UI (Port 5173)
+#### Frontend Development Mode (Optional)
+To launch the Vite development server with Hot Module Replacement (HMR) for frontend code editing:
 ```bash
+./bin/glitch web --dev
+# or
 npm run web
 ```
-Visit: **`http://127.0.0.1:5173`**
+Visit: **`http://127.0.0.1:5173`** (or let the daemon seamlessly redirect)
 
 ### Default Operator Credentials
 | Username | Password | Role |

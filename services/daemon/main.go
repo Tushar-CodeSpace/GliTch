@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -87,6 +88,25 @@ func main() {
 ║  • Seed Users: admin (pw: admin) · operator (pw: glitch)         ║
 ╚══════════════════════════════════════════════════════════════════╝
 `, addr, resolvedDBPath)
+
+		// Opportunistic companion redirect on port 5173
+		// Smoothly redirects any browser requests navigating to :5173 to :4780
+		if *flagPort != "5173" {
+			go func() {
+				devAddr := fmt.Sprintf("%s:5173", *flagHost)
+				ln, err := net.Listen("tcp", devAddr)
+				if err != nil {
+					return
+				}
+				defer ln.Close()
+				devMux := http.NewServeMux()
+				devMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+					target := fmt.Sprintf("http://%s:%s%s", *flagHost, *flagPort, r.RequestURI)
+					http.Redirect(w, r, target, http.StatusTemporaryRedirect)
+				})
+				_ = http.Serve(ln, devMux)
+			}()
+		}
 
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			fmt.Fprintf(os.Stderr, "❌ Server error: %v\n", err)

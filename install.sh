@@ -393,8 +393,33 @@ if [ "$INSTALL_APT" = true ] || [ "$EUID" -eq 0 ]; then
     echo -e "    ${GRAY}→ 'sudo apt update' will now check for Glitch updates.${NC}"
     echo -e "    ${GRAY}→ 'sudo apt upgrade' will now automatically upgrade Glitch.${NC}"
 
-    # 3. Install System-wide systemd service
-    cp "${ROOT_DIR}/etc/systemd/system/glitch-daemon.service" /etc/systemd/system/glitch-daemon.service
+    # 3. Install System-wide systemd service with dynamic ROOT_DIR
+    cat > /etc/systemd/system/glitch-daemon.service << EOF
+[Unit]
+Description=Glitch Local DevOps Daemon (Go & SQLite)
+Documentation=https://github.com/Tushar-CodeSpace/GliTch
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=${ROOT_DIR}
+ExecStart=${ROOT_DIR}/bin/glitch-daemon -port ${PORT} -db ${DB_PATH} -static ${ROOT_DIR}/packages/web/dist
+Restart=on-failure
+RestartSec=5
+Environment=GLITCH_PORT=${PORT}
+Environment=GLITCH_DB_PATH=${DB_PATH}
+Environment=GLITCH_STATIC_DIR=${ROOT_DIR}/packages/web/dist
+
+# Sandboxing & Security Hardening
+ProtectSystem=full
+ProtectHome=read-only
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+EOF
     if command -v systemctl >/dev/null 2>&1; then
       systemctl daemon-reload || true
       systemctl enable glitch-daemon.service 2>/dev/null || true
@@ -455,19 +480,18 @@ echo -e "${LIME}║             ⚡ GLITCH INSTALLATION SUCCESSFUL ⚡          
 echo -e "${LIME}╠══════════════════════════════════════════════════════════════════╣${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}Database Engine:${NC} SQLite 3 (WAL Mode Enabled)                     ${LIME}║${NC}"
 printf "${LIME}║${NC}  ${BOLD}Database File:${NC}   %-47s ${LIME}║${NC}\n" "${DB_PATH}"
-echo -e "${LIME}║${NC}  ${BOLD}Web Interface:${NC}   ${CYAN}http://127.0.0.1:${PORT}${NC} (All-in-One Console)          ${LIME}║${NC}"
-echo -e "${LIME}║${NC}  ${BOLD}Daemon API:${NC}      http://127.0.0.1:${PORT}/api/health                   ${LIME}║${NC}"
-echo -e "${LIME}║${NC}  ${BOLD}Dev Server:${NC}      http://127.0.0.1:5173 (glitch web / npm run web)  ${LIME}║${NC}"
+echo -e "${LIME}║${NC}  ${BOLD}Web Console:${NC}     ${CYAN}http://127.0.0.1:${PORT}${NC} (Live UI & API Dashboard)   ${LIME}║${NC}"
+echo -e "${LIME}║${NC}  ${BOLD}REST API:${NC}        http://127.0.0.1:${PORT}/api/health                   ${LIME}║${NC}"
 echo -e "${LIME}║                                                                  ║${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}Default Operator Credentials:${NC}                                   ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    • ${CYAN}admin${NC}    / ${CYAN}admin${NC}   (System Administrator)                   ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    • ${CYAN}operator${NC} / ${CYAN}glitch${NC}  (Local DevOps Operator)                  ${LIME}║${NC}"
 echo -e "${LIME}║                                                                  ║${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}CLI Commands:${NC}                                                    ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    • Open Web UI:    ${GREEN}glitch web${NC}                                   ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    • Open Web UI:    ${GREEN}glitch web${NC}  (opens http://127.0.0.1:${PORT})         ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    • Check Status:   ${GREEN}glitch status${NC}                                ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    • Inspect DB:     ${GREEN}glitch db${NC}                                    ${LIME}║${NC}"
-echo -e "${LIME}║${NC}    • Restart:        ${GREEN}glitch restart${NC}                               ${LIME}║${NC}"
+echo -e "${LIME}║${NC}    • Dev Mode:       ${GREEN}glitch web --dev${NC} (Vite HMR on :5173)         ${LIME}║${NC}"
 echo -e "${LIME}║                                                                  ║${NC}"
 echo -e "${LIME}║${NC}  ${BOLD}APT Integration:${NC}                                                 ${LIME}║${NC}"
 echo -e "${LIME}║${NC}    'sudo apt update' checks for updates automatically!            ${LIME}║${NC}"
