@@ -105,8 +105,20 @@ sudo apt install ./dist/glitch_0.1.0_all.deb
 
 To cleanly remove all GliTch binaries, systemd services, APT hooks, and data:
 
+### Single Command Uninstaller
 ```bash
-# Run the uninstaller
+curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/uninstall.sh | sudo bash
+```
+
+### Local Workspace Uninstaller
+```bash
+# Run local uninstaller
 sudo ./uninstall.sh
+
+# Or without prompts
+sudo ./uninstall.sh -y
+
+# Keep SQLite database during uninstall
+sudo ./uninstall.sh --keep-data
 ```
 
