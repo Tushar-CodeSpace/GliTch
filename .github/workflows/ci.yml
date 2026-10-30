@@ -17,16 +17,13 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   # --------------------------------------------------------------------------
   # 1. Branch Naming & Semantic Versioning Resolution
   # --------------------------------------------------------------------------
   version-check:
     name: Resolve SemVer from Branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       semver: ${{ steps.semver.outputs.version }}
       bump_type: ${{ steps.semver.outputs.bump_type }}
@@ -34,13 +31,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Setup Go 1.23
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache: true
-          cache-dependency-path: services/daemon/go.sum
 
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
@@ -70,7 +60,7 @@ jobs:
   # --------------------------------------------------------------------------
   daemon-tests:
     name: Go Backend & SQLite (Go ${{ matrix.go-version }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -84,8 +74,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ matrix.go-version }}
-          cache: true
-          cache-dependency-path: services/daemon/go.sum
+          cache: false
 
       - name: Run Go Unit & Integration Tests
         working-directory: services/daemon
@@ -102,18 +91,11 @@ jobs:
   # --------------------------------------------------------------------------
   web-build:
     name: Web Frontend Build & Typecheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [version-check]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-
-      - name: Setup Go 1.23
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-          cache: true
-          cache-dependency-path: services/daemon/go.sum
 
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
@@ -148,7 +130,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-24.04, macos-latest]
 
     steps:
       - name: Checkout Repository
@@ -158,6 +140,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+          cache: false
 
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
@@ -185,7 +168,7 @@ jobs:
   # --------------------------------------------------------------------------
   package-deb:
     name: Build Debian Package (.deb)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: [version-check, daemon-tests, web-build]
     steps:
       - name: Checkout Repository
@@ -195,8 +178,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
-          cache: true
-          cache-dependency-path: services/daemon/go.sum
+          cache: false
 
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
