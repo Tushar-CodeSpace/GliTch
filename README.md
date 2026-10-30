@@ -50,14 +50,14 @@ curl -fsSL https://raw.githubusercontent.com/Tushar-CodeSpace/GliTch/main/instal
 ---
 
 ### Prerequisites & Auto-Installation
-- **Node.js 22+ (Active LTS)** or **Node 24+** (provides native built-in `node:sqlite`)
-- **npm**
-> 💡 *Note:* The installer automatically installs Node.js 22 (LTS) and npm if they are missing or if your current Node version is older than 22.
+- **Go 1.22+** (Golang native daemon compiler)
+- **Node.js & npm** (for web frontend bundle building)
+> 💡 *Note:* The installer automatically installs Go, Node.js, and npm if they are missing.
 
 ### Manual / Local Clone Setup
 If you have already cloned the repository locally:
 ```bash
-# Standard local setup
+# Standard local setup (builds Go daemon & web UI)
 ./install.sh
 
 # Or full system setup with APT update hooks & CLI symlink
@@ -68,6 +68,8 @@ sudo ./install.sh --apt --cli
 
 #### Start the Local Daemon (Port 4780)
 ```bash
+./bin/glitch start
+# or
 npm run daemon
 ```
 

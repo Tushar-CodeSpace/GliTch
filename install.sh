@@ -93,7 +93,7 @@ done
 print_banner
 
 # Auto-detect remote pipe execution (e.g. curl -fsSL ... | bash)
-if [ ! -f "${ROOT_DIR}/services/daemon/src/db.mjs" ]; then
+if [ ! -f "${ROOT_DIR}/services/daemon/main.go" ]; then
   if ! command -v git >/dev/null 2>&1; then
     echo -e "  ${RED}❌ Error: git is required for 1-line curl install.${NC}"
     echo "  Please install git or clone the repository manually."
@@ -134,6 +134,43 @@ echo -e "${BOLD}▶ [1/5] Verifying System Requirements...${NC}"
 OS_NAME=$(uname -s)
 ARCH_NAME=$(uname -m)
 echo -e "  • Operating System: ${CYAN}${OS_NAME} (${ARCH_NAME})${NC}"
+
+install_golang() {
+  echo -e "  ${AMBER}⚡ Auto-installing Go (Golang)...${NC}"
+  if [ "$EUID" -eq 0 ] || command -v sudo >/dev/null 2>&1; then
+    SUDO_CMD=""
+    [ "$EUID" -ne 0 ] && SUDO_CMD="sudo"
+    if command -v apt-get >/dev/null 2>&1; then
+      $SUDO_CMD apt-get update -y && $SUDO_CMD apt-get install -y golang-go
+      return
+    elif command -v dnf >/dev/null 2>&1; then
+      $SUDO_CMD dnf install -y golang
+      return
+    elif command -v pacman >/dev/null 2>&1; then
+      $SUDO_CMD pacman -Sy --noconfirm go
+      return
+    elif [ "$(uname -s)" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
+      brew install go
+      return
+    fi
+  fi
+
+  ARCH=$(uname -m)
+  case "$ARCH" in
+    x86_64) ARCH_GO="amd64" ;;
+    aarch64|arm64) ARCH_GO="arm64" ;;
+    *) ARCH_GO="amd64" ;;
+  esac
+  PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+  GO_TAR="go1.22.8.${PLATFORM}-${ARCH_GO}.tar.gz"
+  TMP_DIR=$(mktemp -d)
+  if curl -fsSL "https://go.dev/dl/${GO_TAR}" -o "$TMP_DIR/$GO_TAR"; then
+    mkdir -p "$HOME/.local"
+    tar -C "$HOME/.local" -xzf "$TMP_DIR/$GO_TAR"
+    rm -rf "$TMP_DIR"
+    export PATH="$HOME/.local/go/bin:$PATH"
+  fi
+}
 
 install_nodejs() {
   echo -e "  ${AMBER}⚡ Auto-installing Node.js 22 (LTS) & npm...${NC}"
@@ -274,6 +311,19 @@ if [ -z "$NODE_MAJOR" ] || [ "$NODE_MAJOR" -lt 22 ]; then
 fi
 echo -e "  • Node.js Version:  ${GREEN}v${NODE_VERSION} (supported)${NC}"
 
+# Check Go compiler
+if ! command -v go >/dev/null 2>&1; then
+  echo -e "  ${AMBER}⚠ Go compiler is not installed.${NC}"
+  install_golang
+
+  if ! command -v go >/dev/null 2>&1; then
+    echo -e "  ${RED}❌ Error: Failed to auto-install Go. Please install Go (1.20+) manually.${NC}"
+    exit 1
+  fi
+fi
+GO_VERSION=$(go version | awk '{print $3}')
+echo -e "  • Go Version:       ${GREEN}${GO_VERSION} (supported)${NC}"
+
 # Check npm
 if ! command -v npm >/dev/null 2>&1; then
   echo -e "  ${AMBER}⚠ npm is not installed.${NC}"
@@ -287,28 +337,15 @@ fi
 NPM_VERSION=$(npm -v)
 echo -e "  • npm Version:      ${GREEN}v${NPM_VERSION}${NC}"
 
-echo -e "\n${BOLD}▶ [2/5] Initializing Embedded SQLite Database...${NC}"
-mkdir -p "$(dirname "$DB_PATH")"
+echo -e "\n${BOLD}▶ [2/5] Compiling Go Backend Daemon & Initializing SQLite...${NC}"
+mkdir -p "${ROOT_DIR}/bin" "$(dirname "$DB_PATH")"
+
+echo -e "  • Compiling native Go daemon binary..."
+go build -o "${ROOT_DIR}/bin/glitch-daemon" ./services/daemon
+echo -e "  ${GREEN}✔ Native Go daemon binary compiled at ./bin/glitch-daemon${NC}"
 
 export GLITCH_DB_PATH="$DB_PATH"
-export GLITCH_ROOT_DIR="$ROOT_DIR"
-node --input-type=module -e '
-import { pathToFileURL } from "node:url";
-const dbModulePath = pathToFileURL(process.env.GLITCH_ROOT_DIR + "/services/daemon/src/db.mjs").href;
-import(dbModulePath).then(m => {
-  const { db, dbPath } = m.initDatabase(process.env.GLITCH_DB_PATH);
-  console.log("  • Database Engine:  SQLite 3 (WAL mode active)");
-  console.log("  • Database File:    " + dbPath);
-  const userCount = db.prepare("SELECT COUNT(*) as c FROM users").get().c;
-  const incCount = db.prepare("SELECT COUNT(*) as c FROM incidents").get().c;
-  console.log("  • Seeded Operators: " + userCount + " accounts ready");
-  console.log("  • SRE Incidents:    " + incCount + " incidents tracked");
-  db.close();
-}).catch(err => {
-  console.error("  ❌ Database initialization failed:", err);
-  process.exit(1);
-});
-'
+"${ROOT_DIR}/bin/glitch-daemon" db
 
 echo -e "\n${BOLD}▶ [3/5] Installing Frontend Dependencies...${NC}"
 cd "${ROOT_DIR}/packages/web"
@@ -346,7 +383,8 @@ if [ "$INSTALL_APT" = true ] || [ "$EUID" -eq 0 ]; then
     # 1. Symlink binaries to /usr/local/bin
     ln -sf "${ROOT_DIR}/bin/glitch" /usr/local/bin/glitch
     ln -sf "${ROOT_DIR}/bin/glitch-update" /usr/local/bin/glitch-update
-    echo -e "  ${GREEN}✔ Installed /usr/local/bin/glitch & /usr/local/bin/glitch-update${NC}"
+    ln -sf "${ROOT_DIR}/bin/glitch-daemon" /usr/local/bin/glitch-daemon
+    echo -e "  ${GREEN}✔ Installed /usr/local/bin/glitch, glitch-update & glitch-daemon${NC}"
 
     # 2. Install APT configuration hook
     cp "${ROOT_DIR}/etc/apt/apt.conf.d/99glitch-update" /etc/apt/apt.conf.d/99glitch-update
@@ -372,7 +410,8 @@ if [ "$INSTALL_CLI" = true ] && [ "$EUID" -ne 0 ]; then
   mkdir -p "$TARGET_BIN"
   ln -sf "${ROOT_DIR}/bin/glitch" "${TARGET_BIN}/glitch"
   ln -sf "${ROOT_DIR}/bin/glitch-update" "${TARGET_BIN}/glitch-update"
-  echo -e "  ${GREEN}✔ Symlinked 'glitch' & 'glitch-update' to ${TARGET_BIN}${NC}"
+  ln -sf "${ROOT_DIR}/bin/glitch-daemon" "${TARGET_BIN}/glitch-daemon"
+  echo -e "  ${GREEN}✔ Symlinked 'glitch', 'glitch-update' & 'glitch-daemon' to ${TARGET_BIN}${NC}"
   if [[ ":$PATH:" != *":${TARGET_BIN}:"* ]]; then
     echo -e "  ${AMBER}Note: Make sure ${TARGET_BIN} is in your PATH:${NC}"
     echo -e "    export PATH=\"\$HOME/.local/bin:\$PATH\""
@@ -385,13 +424,13 @@ if [ "$INSTALL_SYSTEMD" = true ] && [ "$EUID" -ne 0 ]; then
   mkdir -p "$SYSTEMD_DIR"
   cat > "${SYSTEMD_DIR}/glitch-daemon.service" << EOF
 [Unit]
-Description=Glitch Local DevOps Daemon (SQLite)
+Description=Glitch Local DevOps Daemon (Go & SQLite)
 After=network.target
 
 [Service]
 Type=simple
 WorkingDirectory=${ROOT_DIR}
-ExecStart=$(which node) ${ROOT_DIR}/services/daemon/src/index.mjs
+ExecStart=${ROOT_DIR}/bin/glitch-daemon -port ${PORT} -db ${DB_PATH} -static ${ROOT_DIR}/packages/web/dist
 Restart=on-failure
 RestartSec=5
 Environment=GLITCH_PORT=${PORT}

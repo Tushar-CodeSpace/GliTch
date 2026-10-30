@@ -11,3 +11,6 @@ data/
 *.db-shm
 *.sqlite
 *.sqlite3
+
+# Binaries
+bin/glitch-daemon

@@ -11,7 +11,7 @@ GliTch operates as a local-first, zero-cloud-dependency DevOps copilot and obser
                                  │ HTTP / JSON API (:4780)
 ┌────────────────────────────────▼────────────────────────────────┐
 │                    GliTch Background Daemon                     │
-│                Node.js Native HTTP Microservice                 │
+│               Go Native HTTP Microservice Binary                │
 │  ┌─────────────────────────────┬─────────────────────────────┐  │
 │  │     Authentication & API    │  Telemetry & Health Monitor │  │
 │  │   PBKDF2 Sessions & Tokens  │ Host Metrics (CPU, RAM, OS) │  │
@@ -25,7 +25,7 @@ GliTch operates as a local-first, zero-cloud-dependency DevOps copilot and obser
                                  │
 ┌────────────────────────────────┴────────────────────────────────┐
 │                      Command Line & System                      │
-│     bin/glitch • bin/glitch-update • APT Hooks (/etc/apt)       │
+│     bin/glitch • bin/glitch-daemon • APT Hooks (/etc/apt)       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -39,17 +39,18 @@ GliTch operates as a local-first, zero-cloud-dependency DevOps copilot and obser
 * **Role**: Real-time observability dashboard, incident triaging, service mesh inspection, and interactive AI DevOps Copilot.
 
 ### 2. Backend Daemon (`services/daemon`)
-* **Technology**: Node.js 22+ (Active LTS), utilizing native HTTP and standard library modules (`node:sqlite`, `node:crypto`, `node:os`).
+* **Technology**: Native Go (Golang 1.22+), compiling to a standalone binary `bin/glitch-daemon` with pure Go SQLite driver (`modernc.org/sqlite`).
 * **Port**: Listens on `http://127.0.0.1:4780`.
-* **Zero Dependency**: Runs purely on Node standard libraries without external native binary addon fragility.
+* **Zero CGO / Pure Go**: Compiles anywhere without C compiler requirements, lightweight (<15MB RAM), sub-millisecond startup times.
 
 ### 3. Local SQLite Database Layer (`data/glitch.db`)
 * **Storage**: Single file embedded SQLite database stored at `data/glitch.db`.
-* **Reliability**: Configured with `PRAGMA journal_mode = WAL` (Write-Ahead Logging) and `PRAGMA synchronous = NORMAL` for concurrent read/write stability and data integrity.
-* **Security**: Passwords salted and hashed with PBKDF2 (100,000 iterations, SHA-512) and verified with constant-time comparison (`crypto.timingSafeEqual`).
+* **Reliability**: Configured with `PRAGMA journal_mode = WAL` (Write-Ahead Logging) and `PRAGMA foreign_keys = ON;` for concurrent read/write stability and data integrity.
+* **Security**: Passwords salted and hashed with PBKDF2 (SHA-512) and verified with constant-time comparison (`subtle.ConstantTimeCompare`).
 
 ### 4. CLI Binaries & APT Integration (`bin/`, `etc/`)
 * **`bin/glitch`**: Unified command-line interface for querying system status, checking DB health, and running remediation playbooks.
+* **`bin/glitch-daemon`**: Standalone Go binary serving REST API, SQLite queries, and static web UI.
 * **`bin/glitch-update`**: Self-contained updater supporting background check mode (`--check-only`) and automated migrations.
 * **APT Hooks**: Configured in `/etc/apt/apt.conf.d/99glitch-update` to trigger checks whenever the system runs `sudo apt update`.
 

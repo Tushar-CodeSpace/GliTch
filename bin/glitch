@@ -12,7 +12,7 @@ DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 PID_FILE="${DIR}/data/glitch.pid"
 PORT="${GLITCH_PORT:-4780}"
 HOST="${GLITCH_HOST:-127.0.0.1}"
-DAEMON_SCRIPT="${DIR}/services/daemon/src/index.mjs"
+DAEMON_BIN="${DIR}/bin/glitch-daemon"
 
 # Color Codes
 GREEN='\033[0;32m'
@@ -67,15 +67,24 @@ is_running() {
   return 1
 }
 
+ensure_binary() {
+  if [ ! -f "$DAEMON_BIN" ]; then
+    echo -e "${LIME}⚡ Building Glitch native Go daemon...${NC}"
+    (cd "${DIR}" && go build -o "$DAEMON_BIN" ./services/daemon)
+  fi
+}
+
 cmd_start() {
   if is_running; then
     echo -e "${AMBER}⚡ Glitch daemon is already running at http://${HOST}:${PORT}${NC}"
     exit 0
   fi
 
-  echo -e "${LIME}⚡ Starting Glitch Local DevOps Daemon (SQLite)...${NC}"
+  ensure_binary
+
+  echo -e "${LIME}⚡ Starting Glitch Local DevOps Daemon (Go & SQLite)...${NC}"
   mkdir -p "${DIR}/data"
-  nohup node "$DAEMON_SCRIPT" > "${DIR}/data/daemon.log" 2>&1 &
+  nohup "$DAEMON_BIN" -port "$PORT" -host "$HOST" -db "${DIR}/data/glitch.db" -static "${DIR}/packages/web/dist" > "${DIR}/data/daemon.log" 2>&1 &
   echo $! > "$PID_FILE"
 
   # Wait up to 5 seconds for health check
@@ -142,11 +151,13 @@ cmd_status() {
 }
 
 cmd_db() {
-  node "${DIR}/services/daemon/src/cli.mjs" db
+  ensure_binary
+  GLITCH_DB_PATH="${DIR}/data/glitch.db" "$DAEMON_BIN" db
 }
 
 cmd_triage() {
-  node "${DIR}/services/daemon/src/cli.mjs" triage
+  ensure_binary
+  GLITCH_DB_PATH="${DIR}/data/glitch.db" "$DAEMON_BIN" triage
 }
 
 cmd_web() {

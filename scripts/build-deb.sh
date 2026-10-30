@@ -18,11 +18,14 @@ echo "⚡ [Glitch] Building Debian Package: ${PKG_NAME}_${VERSION}_${ARCH}.deb (
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 
-# 2. Build Web Assets
+# 2. Build Web Assets & Go Daemon
 echo "  • Building web UI production bundle..."
 cd "${ROOT_DIR}/packages/web"
 npm run build --silent
 cd "$ROOT_DIR"
+
+echo "  • Compiling Go daemon binary..."
+go build -o "${ROOT_DIR}/bin/glitch-daemon" ./services/daemon
 
 # 3. Create Package Directory Tree
 mkdir -p "${BUILD_DIR}/DEBIAN"
@@ -47,6 +50,7 @@ cp "${ROOT_DIR}/etc/systemd/system/glitch-daemon.service" "${BUILD_DIR}/etc/syst
 # 6. Create Symlinks in /usr/bin
 ln -sf "/opt/glitch/bin/glitch" "${BUILD_DIR}/usr/bin/glitch"
 ln -sf "/opt/glitch/bin/glitch-update" "${BUILD_DIR}/usr/bin/glitch-update"
+ln -sf "/opt/glitch/bin/glitch-daemon" "${BUILD_DIR}/usr/bin/glitch-daemon"
 
 # 7. Write DEBIAN/control
 cat > "${BUILD_DIR}/DEBIAN/control" << EOF
@@ -55,7 +59,7 @@ Version: ${VERSION}
 Section: admin
 Priority: optional
 Architecture: ${ARCH}
-Depends: nodejs (>= 18.0.0), curl, lsof
+Depends: curl, lsof
 Maintainer: Glitch DevOps Team <support@glitch.internal>
 Description: Autonomous AI DevOps Engineer & Local Infrastructure Copilot
  Glitch is a local-first DevOps assistant with an embedded SQLite
@@ -71,12 +75,7 @@ set -e
 # Initialize SQLite database if not present
 mkdir -p /opt/glitch/data
 if [ ! -f /opt/glitch/data/glitch.db ]; then
-  /usr/bin/node -e '
-    import("/opt/glitch/services/daemon/src/db.mjs").then(m => {
-      const { db } = m.initDatabase("/opt/glitch/data/glitch.db");
-      db.close();
-    });
-  ' 2>/dev/null || true
+  /opt/glitch/bin/glitch-daemon db >/dev/null 2>&1 || true
 fi
 
 # Reload systemd and enable daemon

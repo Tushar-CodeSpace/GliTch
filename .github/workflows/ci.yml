@@ -35,6 +35,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+          cache-dependency-path: services/daemon/go.sum
+
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
         with:
@@ -59,28 +66,36 @@ jobs:
           echo "branch_name=$BRANCH" >> "$GITHUB_OUTPUT"
 
   # --------------------------------------------------------------------------
-  # 2. Daemon & SQLite Database Unit/Integration Tests
+  # 2. Go Backend & SQLite Database Automated Tests
   # --------------------------------------------------------------------------
   daemon-tests:
-    name: Daemon & SQLite (Node ${{ matrix.node-version }})
+    name: Go Backend & SQLite (Go ${{ matrix.go-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        node-version: [22.x, 24.x]
+        go-version: ['1.22', '1.23', '1.24']
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Setup Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
         with:
-          node-version: ${{ matrix.node-version }}
+          go-version: ${{ matrix.go-version }}
+          cache: true
+          cache-dependency-path: services/daemon/go.sum
 
-      - name: Run Daemon & SQLite Automated Tests
+      - name: Run Go Unit & Integration Tests
+        working-directory: services/daemon
         run: |
-          node --test services/daemon/test/daemon.test.mjs
+          go test -v ./...
+
+      - name: Compile Native Binary
+        working-directory: services/daemon
+        run: |
+          go build -v -o ../../bin/glitch-daemon .
 
   # --------------------------------------------------------------------------
   # 3. Web UI Typecheck & Production Build
@@ -92,6 +107,13 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Setup Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+          cache-dependency-path: services/daemon/go.sum
 
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
@@ -132,6 +154,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
         with:
@@ -163,6 +190,13 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Setup Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: true
+          cache-dependency-path: services/daemon/go.sum
 
       - name: Setup Node.js 22.x
         uses: actions/setup-node@v4
