@@ -47,6 +47,7 @@ usage() {
   echo -e "  ${GREEN}status${NC}        Check daemon status, host vitals, and SQLite health"
   echo -e "  ${GREEN}db${NC}            Inspect SQLite tables, row counts, and file size"
   echo -e "  ${GREEN}triage${NC}        List active incidents and remediation playbooks"
+  echo -e "  ${GREEN}update${NC}        Check for and apply the latest GliTch updates"
   echo -e "  ${GREEN}web${NC}           Launch web console (http://127.0.0.1:4780, or --dev for Vite)"
   echo -e "  ${GREEN}version${NC}       Display version information"
   echo -e "  ${GREEN}help${NC}          Show this help message"
@@ -160,6 +161,25 @@ cmd_triage() {
   GLITCH_DB_PATH="${DIR}/data/glitch.db" "$DAEMON_BIN" triage
 }
 
+cmd_update() {
+  UPDATER="${DIR}/bin/glitch-update"
+  if [ ! -f "$UPDATER" ] && command -v glitch-update >/dev/null 2>&1; then
+    UPDATER="$(command -v glitch-update)"
+  fi
+  if [ -f "$UPDATER" ]; then
+    if [ "$EUID" -ne 0 ] && [ ! -w "${DIR}" ]; then
+      if command -v sudo >/dev/null 2>&1; then
+        echo -e "${AMBER}⚡ Glitch update requires elevated permissions. Elevating via sudo...${NC}"
+        exec sudo "$UPDATER" --upgrade "$@"
+      fi
+    fi
+    exec "$UPDATER" --upgrade "$@"
+  else
+    echo -e "${RED}❌ Error: glitch-update utility not found at ${UPDATER}${NC}"
+    exit 1
+  fi
+}
+
 cmd_web() {
   if [ "$2" = "--dev" ] || [ "$1" = "dev" ]; then
     echo -e "${LIME}⚡ Launching Glitch Web Interface (Development Mode on :5173)...${NC}"
@@ -203,6 +223,10 @@ case "$1" in
     ;;
   triage)
     cmd_triage
+    ;;
+  update|upgrade)
+    shift || true
+    cmd_update "$@"
     ;;
   web)
     cmd_web

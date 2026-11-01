@@ -38,7 +38,7 @@ for arg in "$@"; do
     --check-only)
       CHECK_ONLY=true
       ;;
-    --upgrade|--apply)
+    --upgrade|--apply|update|upgrade)
       FORCE_UPGRADE=true
       ;;
     --help|-h)
@@ -48,6 +48,11 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+# If executed directly in an interactive shell without --check-only, default to upgrading
+if [ "$CHECK_ONLY" = false ]; then
+  FORCE_UPGRADE=true
+fi
 
 # ------------------------------------------------------------------------------
 # 1. Check for Available Updates (Triggered on 'sudo apt update')
