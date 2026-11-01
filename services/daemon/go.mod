@@ -1,6 +1,6 @@
 module github.com/Tushar-CodeSpace/GliTch/services/daemon
 
-go 1.27.1
+go 1.22
 
 require (
 	github.com/dustin/go-humanize v1.1.0 // indirect
