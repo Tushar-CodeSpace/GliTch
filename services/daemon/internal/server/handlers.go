@@ -103,6 +103,66 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) handleVerifyAuth(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	authHeader := r.Header.Get("Authorization")
+	var token string
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		token = r.URL.Query().Get("token")
+	}
+
+	if token == "" {
+		s.sendError(w, http.StatusUnauthorized, "Missing authorization token.")
+		return
+	}
+
+	var username, role, expiresAt string
+	var userID int64
+	err := s.db.QueryRow(`
+		SELECT user_id, username, role, expires_at
+		FROM sessions
+		WHERE token = ? AND expires_at > CURRENT_TIMESTAMP
+	`, token).Scan(&userID, &username, &role, &expiresAt)
+
+	if err != nil {
+		s.sendError(w, http.StatusUnauthorized, "Session expired or invalid.")
+		return
+	}
+
+	s.sendJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"user": map[string]interface{}{
+			"id":       userID,
+			"username": username,
+			"role":     role,
+		},
+	})
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	authHeader := r.Header.Get("Authorization")
+	var token string
+	if strings.HasPrefix(authHeader, "Bearer ") {
+		token = strings.TrimPrefix(authHeader, "Bearer ")
+	} else {
+		token = r.URL.Query().Get("token")
+	}
+
+	if token != "" {
+		_, _ = s.db.Exec("DELETE FROM sessions WHERE token = ?", token)
+	}
+
+	s.sendJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+	})
+}
+
 func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")

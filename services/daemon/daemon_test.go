@@ -209,6 +209,32 @@ func TestRESTAPIEndpoints(t *testing.T) {
 	if loginResp["token"] == nil || loginResp["token"] == "" {
 		t.Errorf("expected session token in login response")
 	}
+	tokenStr, _ := loginResp["token"].(string)
+
+	// Verify session token via /api/auth/verify
+	verifyReq, _ := http.NewRequest("GET", ts.URL+"/api/auth/verify", nil)
+	verifyReq.Header.Set("Authorization", "Bearer "+tokenStr)
+	res, err = http.DefaultClient.Do(verifyReq)
+	if err != nil || res.StatusCode != 200 {
+		t.Errorf("expected 200 from /api/auth/verify, got %v", res.StatusCode)
+	}
+	res.Body.Close()
+
+	// Verify logout
+	logoutReq, _ := http.NewRequest("POST", ts.URL+"/api/auth/logout", nil)
+	logoutReq.Header.Set("Authorization", "Bearer "+tokenStr)
+	res, err = http.DefaultClient.Do(logoutReq)
+	if err != nil || res.StatusCode != 200 {
+		t.Errorf("expected 200 from /api/auth/logout, got %v", res.StatusCode)
+	}
+	res.Body.Close()
+
+	// After logout, verify should fail with 401
+	res, err = http.DefaultClient.Do(verifyReq)
+	if err != nil || res.StatusCode != 401 {
+		t.Errorf("expected 401 from /api/auth/verify after logout, got %v", res.StatusCode)
+	}
+	res.Body.Close()
 
 	// 5. GET /api/incidents & POST /api/incidents/:id/resolve
 	_, _ = database.Exec(`

@@ -105,6 +105,8 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/api/metrics", s.handleMetrics)
 	s.mux.HandleFunc("/api/auth/login", s.handleLogin)
 	s.mux.HandleFunc("/api/auth/register", s.handleRegister)
+	s.mux.HandleFunc("/api/auth/verify", s.handleVerifyAuth)
+	s.mux.HandleFunc("/api/auth/logout", s.handleLogout)
 	s.mux.HandleFunc("/api/incidents", s.handleIncidents)
 	s.mux.HandleFunc("/api/incidents/", s.handleIncidentSubroute)
 	s.mux.HandleFunc("/api/services", s.handleServices)
