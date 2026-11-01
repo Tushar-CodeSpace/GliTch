@@ -106,7 +106,7 @@ export function LoginScreen({ onDemoLogin, onAuthenticated }: Props) {
               <span className="glitch-effect" data-text="glitch">glitch</span>
               <span className="terminal-cursor-blink">_</span>
             </h1>
-            <span className="terminal-subtitle">LOCAL DEVOPS TOOLKIT</span>
+            <span className="terminal-subtitle">LOCAL DEVOPS SRE CONSOLE</span>
           </div>
 
           {/* 3-Option Auth Selector */}

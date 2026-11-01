@@ -13,7 +13,7 @@ export function AppHeader({ version = "0.1.0", isLive = false }: Props) {
             <svg
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#c5ff4a"
+              stroke="#38bdf8"
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"

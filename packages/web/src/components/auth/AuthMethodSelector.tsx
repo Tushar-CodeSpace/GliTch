@@ -55,14 +55,14 @@ export function AuthMethodSelector({ selected, onSelect }: Props) {
       {/* Explanatory note if user clicks Biometric or Token */}
       {selected === "biometric" && (
         <div className="method-notice-box" role="alert">
-          <Fingerprint size={14} className="text-accent" />
+          <Fingerprint size={14} className="text-cyan" />
           <span>Biometric authentication requires host Secure Enclave drivers (disabled in this build). Please sign in via Password.</span>
         </div>
       )}
 
       {selected === "token" && (
         <div className="method-notice-box" role="alert">
-          <Key size={14} className="text-accent" />
+          <Key size={14} className="text-cyan" />
           <span>Local daemon token provider not configured. Please authenticate with local password or enter via Demo Mode.</span>
         </div>
       )}

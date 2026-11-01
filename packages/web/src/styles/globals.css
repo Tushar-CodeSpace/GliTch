@@ -59,19 +59,22 @@ button { color: inherit; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
 
 /* ==========================================================================
-   Glitch Minimalist Cyber-Terminal Login UI
+   Glitch Obsidian Executive Login UI (Bluish / Cyber-Indigo Theme)
    ========================================================================== */
 .terminal-login-viewport {
   position: relative;
   width: 100vw;
   min-height: 100vh;
   overflow-x: hidden;
-  background-color: #000000;
+  background-color: #07090e;
+  background-image: radial-gradient(circle at 14% 12%, rgba(56, 189, 248, 0.09) 0%, transparent 45%),
+                    radial-gradient(circle at 86% 16%, rgba(99, 102, 241, 0.08) 0%, transparent 42%),
+                    radial-gradient(circle at 50% 82%, rgba(14, 165, 233, 0.05) 0%, transparent 50%);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   font-family: 'DM Mono', ui-monospace, SFMono-Regular, monospace;
-  color: #f4f5f0;
+  color: #f1f5f9;
 }
 
 /* 1. Top Header */
@@ -100,12 +103,12 @@ button { color: inherit; }
 .terminal-logo-box {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
-  background: #000000;
-  border: 1.5px solid #c5ff4a;
-  box-shadow: 0 0 10px rgba(197, 255, 74, 0.25);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.2), rgba(99, 102, 241, 0.2));
+  border: 1.5px solid #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
   flex: none;
 }
 
@@ -116,8 +119,8 @@ button { color: inherit; }
 
 .terminal-brand-wordmark {
   font-family: 'DM Mono', monospace;
-  font-size: 19px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: #ffffff;
   letter-spacing: -0.02em;
 }
@@ -128,16 +131,16 @@ button { color: inherit; }
   gap: 14px;
   font-size: 11px;
   font-family: 'DM Mono', monospace;
-  color: #737c6d;
+  color: #64748b;
   letter-spacing: 0.08em;
 }
 
 .terminal-meta-version {
-  color: #737c6d;
+  color: #94a3b8;
 }
 
 .terminal-meta-divider {
-  color: #26331e;
+  color: #334155;
   font-weight: 300;
 }
 
@@ -145,7 +148,7 @@ button { color: inherit; }
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  color: #c5ff4a;
+  color: #38bdf8;
   font-weight: 600;
 }
 
@@ -153,15 +156,15 @@ button { color: inherit; }
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--glitch-accent);
-  box-shadow: 0 0 10px var(--glitch-accent);
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
   display: inline-block;
   animation: pulse-dot 2.5s infinite ease-in-out;
 }
 
 @keyframes pulse-dot {
   0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 14px var(--glitch-accent); }
+  50% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 14px #10b981; }
 }
 
 /* 2. Main Centered Terminal Window */
@@ -181,11 +184,13 @@ button { color: inherit; }
   position: relative;
   width: 100%;
   max-width: 480px;
-  background: #050704;
-  border: 1.2px solid #1a2a12;
-  border-radius: 16px;
-  padding: 24px 32px 28px;
-  box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 40px rgba(197, 255, 74, 0.02);
+  background: linear-gradient(145deg, rgba(16, 22, 38, 0.88) 0%, rgba(10, 14, 25, 0.96) 100%);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 18px;
+  padding: 26px 32px 30px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.75), 0 0 40px rgba(56, 189, 248, 0.07);
 }
 
 .terminal-window-titlebar {
@@ -198,8 +203,8 @@ button { color: inherit; }
 .terminal-prompt-glyph {
   font-size: 13px;
   font-weight: 800;
-  color: #c5ff4a;
-  opacity: 0.9;
+  color: #38bdf8;
+  opacity: 0.95;
 }
 
 .terminal-window-controls {
@@ -215,12 +220,12 @@ button { color: inherit; }
 }
 
 .window-dot.active {
-  background: #c5ff4a;
-  box-shadow: 0 0 8px #c5ff4a;
+  background: #38bdf8;
+  box-shadow: 0 0 8px #38bdf8;
 }
 
 .window-dot.muted {
-  background: #172412;
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Brand Header */
@@ -233,9 +238,9 @@ button { color: inherit; }
 }
 
 .terminal-main-title {
-  font-size: 40px;
+  font-size: 42px;
   font-weight: 800;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   color: #ffffff;
   margin: 0;
   line-height: 1;
@@ -261,18 +266,18 @@ button { color: inherit; }
   pointer-events: none;
 }
 
-/* Green/Lime offset slip */
+/* Electric Cyan offset slip */
 .glitch-effect::before {
   left: -2px;
-  text-shadow: 2px 0 #c5ff4a;
+  text-shadow: 2px 0 #38bdf8;
   clip-path: inset(0 0 0 0);
   animation: glitch-anim-1 3.2s infinite linear alternate-reverse;
 }
 
-/* Cyan/Neon-Green chromatic split */
+/* Electric Violet/Indigo chromatic split */
 .glitch-effect::after {
   left: 2px;
-  text-shadow: -2px 0 #00ffff;
+  text-shadow: -2px 0 #818cf8;
   clip-path: inset(0 0 0 0);
   animation: glitch-anim-2 2.7s infinite linear alternate-reverse;
 }
@@ -287,13 +292,13 @@ button { color: inherit; }
     clip-path: inset(22% 0 58% 0);
     transform: translate(-3px, 1px);
     opacity: 0.9;
-    text-shadow: 2.5px 0 #c5ff4a;
+    text-shadow: 2.5px 0 #38bdf8;
   }
   86% {
     clip-path: inset(62% 0 14% 0);
     transform: translate(3px, -1px);
     opacity: 0.95;
-    text-shadow: -2px 0 #73ff8c;
+    text-shadow: -2px 0 #60a5fa;
   }
   89% {
     clip-path: inset(38% 0 42% 0);
@@ -322,13 +327,13 @@ button { color: inherit; }
     clip-path: inset(52% 0 28% 0);
     transform: translate(3px, -1px);
     opacity: 0.9;
-    text-shadow: -2.5px 0 #39ff14;
+    text-shadow: -2.5px 0 #818cf8;
   }
   85% {
     clip-path: inset(18% 0 62% 0);
     transform: translate(-3px, 1px);
     opacity: 0.95;
-    text-shadow: 2px 0 #00ffff;
+    text-shadow: 2px 0 #38bdf8;
   }
   88% {
     clip-path: inset(72% 0 8% 0);
@@ -367,7 +372,7 @@ button { color: inherit; }
 .terminal-cursor-blink {
   display: inline-block;
   animation: term-blink 1.06s infinite;
-  color: #c5ff4a;
+  color: #38bdf8;
 }
 
 @keyframes term-blink {
@@ -378,8 +383,8 @@ button { color: inherit; }
 .terminal-subtitle {
   font-size: 10.5px;
   font-weight: 700;
-  color: #c5ff4a;
-  letter-spacing: 0.22em;
+  color: #38bdf8;
+  letter-spacing: 0.2em;
   margin-top: 8px;
   text-transform: uppercase;
   font-family: 'DM Mono', monospace;
@@ -396,9 +401,9 @@ button { color: inherit; }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
-  background: #030502;
-  border: 1px solid #162410;
-  border-radius: 7px;
+  background: rgba(10, 14, 25, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
   padding: 3px;
 }
 
@@ -407,11 +412,11 @@ button { color: inherit; }
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 35px;
+  height: 36px;
   border: 1px solid transparent;
-  border-radius: 5px;
+  border-radius: 6px;
   background: transparent;
-  color: #6f7a68;
+  color: #64748b;
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
@@ -420,27 +425,28 @@ button { color: inherit; }
 }
 
 .auth-tab-btn:hover:not(.disabled) {
-  color: #ffffff;
+  color: #f1f5f9;
 }
 
 .auth-tab-btn.active {
-  background: #0d150a;
-  border-color: #384e23;
-  color: #c5ff4a;
+  background: linear-gradient(90deg, rgba(56, 189, 248, 0.16) 0%, rgba(99, 102, 241, 0.08) 100%);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.15);
 }
 
 .auth-tab-btn.disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
 .tab-pill-disabled {
   font-size: 7px;
   font-weight: 700;
-  padding: 1px 3px;
+  padding: 1px 4px;
   border-radius: 2px;
-  background: #131c0e;
-  color: #66725f;
+  background: rgba(255, 255, 255, 0.06);
+  color: #64748b;
   margin-left: 2px;
 }
 
@@ -448,14 +454,14 @@ button { color: inherit; }
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 9px 12px;
-  background: #0e160a;
-  border: 1px solid #243516;
-  border-radius: 6px;
-  font-size: 10px;
-  color: #a4ad9d;
+  padding: 10px 13px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 7px;
+  font-size: 10.5px;
+  color: #cbd5e1;
   margin-top: 8px;
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 /* Terminal Login Form */
@@ -467,17 +473,17 @@ button { color: inherit; }
 .terminal-card-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 13px;
 }
 
 .auth-error-banner {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 9px 12px;
-  background: #240e0c;
-  border: 1px solid #4a1c18;
-  border-radius: 7px;
+  padding: 10px 13px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
   font-size: 11px;
   color: #fca5a5;
   line-height: 1.4;
@@ -522,23 +528,28 @@ button { color: inherit; }
   position: relative;
   display: flex;
   align-items: center;
-  height: 44px;
-  background: #030502;
-  border: 1px solid #172411;
-  border-radius: 7px;
-  padding: 0 13px;
+  height: 45px;
+  background: rgba(10, 14, 25, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0 14px;
   gap: 10px;
   transition: border-color .15s, box-shadow .15s;
 }
 
 .terminal-input-wrap:focus-within {
-  border-color: #496323;
-  box-shadow: 0 0 0 2px rgba(197, 255, 74, 0.1);
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
 }
 
 .input-glyph {
-  color: #5d6756;
+  color: #64748b;
   flex: none;
+  transition: color .15s;
+}
+
+.terminal-input-wrap:focus-within .input-glyph {
+  color: #38bdf8;
 }
 
 .terminal-input-wrap input {
@@ -553,13 +564,13 @@ button { color: inherit; }
 }
 
 .terminal-input-wrap input::placeholder {
-  color: #485241;
+  color: #475569;
 }
 
 .password-toggle-btn {
   border: 0;
   background: transparent;
-  color: #5d6756;
+  color: #64748b;
   cursor: pointer;
   display: grid;
   place-items: center;
@@ -568,7 +579,7 @@ button { color: inherit; }
 }
 
 .password-toggle-btn:hover {
-  color: #c5ff4a;
+  color: #38bdf8;
 }
 
 .terminal-options-row {
@@ -583,7 +594,7 @@ button { color: inherit; }
 .terminal-checkbox-wrap {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 8px;
   cursor: pointer;
   user-select: none;
 }
@@ -593,41 +604,42 @@ button { color: inherit; }
 }
 
 .custom-checkbox {
-  width: 14px;
-  height: 14px;
-  border-radius: 3px;
-  border: 1px solid #364826;
-  background: #080c05;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.8);
   display: grid;
   place-items: center;
   transition: all .15s;
 }
 
 .custom-checkbox.checked {
-  background: #c5ff4a;
-  border-color: #c5ff4a;
+  background: #38bdf8;
+  border-color: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
 }
 
 .checkbox-divider {
-  color: #27341d;
+  color: #334155;
   margin: 0 1px;
   font-weight: 300;
 }
 
 .checkbox-label {
-  color: #798471;
+  color: #94a3b8;
   font-size: 11px;
 }
 
 .forgot-link {
-  color: #636e5b;
+  color: #64748b;
   font-size: 11px;
   text-decoration: none;
   transition: color .15s;
 }
 
 .forgot-link:hover {
-  color: #c5ff4a;
+  color: #38bdf8;
 }
 
 .terminal-signin-btn {
@@ -636,23 +648,23 @@ button { color: inherit; }
   justify-content: center;
   gap: 8px;
   width: 100%;
-  height: 44px;
+  height: 45px;
   border: 0;
-  border-radius: 7px;
-  background: #c5ff4a;
-  color: #000000;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #0ea5e9 0%, #38bdf8 50%, #6366f1 100%);
+  color: #ffffff;
   font-family: 'DM Mono', monospace;
   font-size: 13.5px;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: all .15s;
-  box-shadow: 0 0 18px rgba(197, 255, 74, 0.32);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.38);
 }
 
 .terminal-signin-btn:hover:not(:disabled) {
-  background: #d4ff68;
-  box-shadow: 0 0 28px rgba(197, 255, 74, 0.48);
+  background: linear-gradient(135deg, #0284c7 0%, #38bdf8 50%, #818cf8 100%);
+  box-shadow: 0 0 32px rgba(56, 189, 248, 0.58);
   transform: translateY(-1px);
 }
 
@@ -666,7 +678,7 @@ button { color: inherit; }
   justify-content: center;
   align-items: center;
   margin: 16px 0;
-  color: #38452e;
+  color: #475569;
   font-family: 'DM Mono', monospace;
   font-size: 10px;
   letter-spacing: 0.16em;
@@ -678,11 +690,11 @@ button { color: inherit; }
   justify-content: center;
   gap: 9px;
   width: 100%;
-  height: 42px;
-  border: 1px solid #182512;
-  border-radius: 7px;
-  background: #030502;
-  color: #c8cec2;
+  height: 43px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.7);
+  color: #cbd5e1;
   font-family: 'DM Mono', monospace;
   font-size: 12px;
   font-weight: 600;
@@ -691,13 +703,18 @@ button { color: inherit; }
 }
 
 .terminal-demomode-btn:hover {
-  background: #0b1208;
-  border-color: #384e23;
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(56, 189, 248, 0.4);
   color: #ffffff;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.15);
 }
 
 .demomode-icon {
-  color: #626d5b;
+  color: #64748b;
+}
+
+.terminal-demomode-btn:hover .demomode-icon {
+  color: #38bdf8;
 }
 
 .terminal-security-note {
@@ -706,13 +723,13 @@ button { color: inherit; }
   justify-content: center;
   gap: 7px;
   margin-top: 18px;
-  color: #5f6a58;
+  color: #64748b;
   font-size: 10.5px;
   font-family: 'DM Mono', monospace;
 }
 
 .security-shield-icon {
-  color: #5f6a58;
+  color: #38bdf8;
 }
 
 /* 3. Bottom Corner HUDs */
@@ -732,8 +749,8 @@ button { color: inherit; }
 
 .mode-stack-bar {
   width: 2px;
-  background: #c5ff4a;
-  box-shadow: 0 0 8px #c5ff4a;
+  background: linear-gradient(180deg, #38bdf8, #6366f1);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.5);
   border-radius: 1px;
 }
 
@@ -746,12 +763,12 @@ button { color: inherit; }
 }
 
 .mode-item {
-  color: #4f5a48;
+  color: #475569;
   font-weight: 500;
 }
 
 .mode-item.active {
-  color: #c5ff4a;
+  color: #38bdf8;
   font-weight: 700;
 }
 
@@ -763,7 +780,7 @@ button { color: inherit; }
 }
 
 .terminal-signature-text {
-  color: #727e6a;
+  color: #64748b;
   font-weight: 600;
 }
 
