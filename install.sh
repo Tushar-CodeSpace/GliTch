@@ -162,7 +162,7 @@ install_golang() {
     *) ARCH_GO="amd64" ;;
   esac
   PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
-  GO_TAR="go1.22.8.${PLATFORM}-${ARCH_GO}.tar.gz"
+  GO_TAR="go1.26.8.${PLATFORM}-${ARCH_GO}.tar.gz"
   TMP_DIR=$(mktemp -d)
   if curl -fsSL "https://go.dev/dl/${GO_TAR}" -o "$TMP_DIR/$GO_TAR"; then
     mkdir -p "$HOME/.local"
@@ -317,7 +317,7 @@ if ! command -v go >/dev/null 2>&1; then
   install_golang
 
   if ! command -v go >/dev/null 2>&1; then
-    echo -e "  ${RED}❌ Error: Failed to auto-install Go. Please install Go (1.20+) manually.${NC}"
+    echo -e "  ${RED}❌ Error: Failed to auto-install Go. Please install Go (1.26+) manually.${NC}"
     exit 1
   fi
 fi
