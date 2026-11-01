@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Tushar-CodeSpace/GliTch/services/daemon/internal/db"
 	"github.com/Tushar-CodeSpace/GliTch/services/daemon/internal/server"
@@ -204,8 +205,11 @@ func TestRESTAPIEndpoints(t *testing.T) {
 		t.Errorf("unexpected device metrics: %+v", devMetrics)
 	}
 
-	// Wait briefly for asynchronous SQLite sample insertion
-	_ = db.RecordMetricsSample(database, devMetrics)
+	// Record metrics sample into test SQLite database
+	time.Sleep(30 * time.Millisecond)
+	if err := db.RecordMetricsSample(database, devMetrics); err != nil {
+		t.Logf("RecordMetricsSample note: %v", err)
+	}
 
 	histRes, err := http.Get(ts.URL + "/api/metrics/history?range=1h&limit=50")
 	if err != nil || histRes.StatusCode != 200 {

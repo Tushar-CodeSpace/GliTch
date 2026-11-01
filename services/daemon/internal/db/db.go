@@ -36,12 +36,15 @@ func InitDatabase(dbPath string) (*sql.DB, string, error) {
 	db.SetMaxOpenConns(10)
 	db.SetMaxIdleConns(5)
 
-	// Enable WAL mode and foreign keys for high performance concurrent local access
+	// Enable WAL mode, foreign keys, and busy timeout for high performance concurrent local access
 	if _, err := db.Exec("PRAGMA journal_mode = WAL;"); err != nil {
 		return nil, "", fmt.Errorf("failed to enable WAL mode: %w", err)
 	}
 	if _, err := db.Exec("PRAGMA foreign_keys = ON;"); err != nil {
 		return nil, "", fmt.Errorf("failed to enable foreign keys: %w", err)
+	}
+	if _, err := db.Exec("PRAGMA busy_timeout = 5000;"); err != nil {
+		return nil, "", fmt.Errorf("failed to set busy timeout: %w", err)
 	}
 
 	// Run table creation schemas
