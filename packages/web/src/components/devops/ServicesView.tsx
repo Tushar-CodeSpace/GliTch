@@ -49,6 +49,15 @@ export function ServicesView({ services, onRestartService, onAskGlitch }: Props)
       </div>
 
       <div className="services-grid">
+        {services.length === 0 && (
+          <Panel className="empty-state-card" style={{ gridColumn: "1 / -1", textAlign: "center", padding: "3rem 1.5rem" }}>
+            <Server size={36} className="text-muted" style={{ margin: "0 auto 1rem auto", display: "block" }} />
+            <h3 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>No Monitored Services Registered</h3>
+            <p style={{ color: "var(--color-muted)", fontSize: "0.9rem", maxWidth: "480px", margin: "0 auto" }}>
+              Local containers and microservices will automatically appear here once registered with GliTch or detected via daemon metrics.
+            </p>
+          </Panel>
+        )}
         {services.map((service) => {
           const isLogsOpen = selectedLogsId === service.id;
           const isRestarting = restartingId === service.id;

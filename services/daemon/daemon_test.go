@@ -102,21 +102,21 @@ func TestSQLiteDatabaseLayer(t *testing.T) {
 		t.Errorf("failed to verify default operator password")
 	}
 
-	// 6. Incidents seeded & resolvable
-	var incidentCount int
-	if err := database.QueryRow("SELECT COUNT(*) FROM incidents").Scan(&incidentCount); err != nil {
-		t.Fatalf("failed to query incidents count: %v", err)
-	}
-	if incidentCount < 3 {
-		t.Errorf("expected at least 3 seeded incidents, got %d", incidentCount)
+	// 6. Incidents table structure & operations
+	_, err = database.Exec(`
+		INSERT INTO incidents (id, title, description, severity, service, timestamp, status, suggested_action, command, impact)
+		VALUES ('INC-TEST', 'Test Incident', 'Test Description', 'critical', 'test-service', 'now', 'active', 'fix it', 'run fix', 'none')
+	`)
+	if err != nil {
+		t.Fatalf("failed to insert test incident: %v", err)
 	}
 
-	_, err = database.Exec("UPDATE incidents SET status = 'resolved' WHERE id = 'INC-307'")
+	_, err = database.Exec("UPDATE incidents SET status = 'resolved' WHERE id = 'INC-TEST'")
 	if err != nil {
 		t.Fatalf("failed to resolve incident: %v", err)
 	}
 	var incStatus string
-	_ = database.QueryRow("SELECT status FROM incidents WHERE id = 'INC-307'").Scan(&incStatus)
+	_ = database.QueryRow("SELECT status FROM incidents WHERE id = 'INC-TEST'").Scan(&incStatus)
 	if incStatus != "resolved" {
 		t.Errorf("expected incident status 'resolved', got '%s'", incStatus)
 	}
@@ -211,6 +211,10 @@ func TestRESTAPIEndpoints(t *testing.T) {
 	}
 
 	// 5. GET /api/incidents & POST /api/incidents/:id/resolve
+	_, _ = database.Exec(`
+		INSERT INTO incidents (id, title, description, severity, service, timestamp, status, suggested_action, command, impact)
+		VALUES ('INC-API-TEST', 'API Test Incident', 'Test Description', 'warning', 'test-svc', 'just now', 'active', 'test action', 'echo test', 'none')
+	`)
 	res, err = http.Get(ts.URL + "/api/incidents")
 	if err != nil || res.StatusCode != 200 {
 		t.Fatalf("GET /api/incidents failed: %v", res.StatusCode)
@@ -261,6 +265,10 @@ func TestRESTAPIEndpoints(t *testing.T) {
 	}
 
 	// 7. GET /api/services
+	_, _ = database.Exec(`
+		INSERT INTO services (id, name, category, status, cpu, memory, uptime, port, version, logs_json)
+		VALUES ('srv-test-1', 'test-daemon', 'daemon', 'running', 1.0, '50 MB', '1h', '8080', 'v1.0.0', '[]')
+	`)
 	srvRes, err := http.Get(ts.URL + "/api/services")
 	if err != nil || srvRes.StatusCode != 200 {
 		t.Fatalf("GET /api/services failed: %v", srvRes.StatusCode)
@@ -268,11 +276,15 @@ func TestRESTAPIEndpoints(t *testing.T) {
 	var services []db.Service
 	_ = json.NewDecoder(srvRes.Body).Decode(&services)
 	srvRes.Body.Close()
-	if len(services) < 4 {
-		t.Errorf("expected at least 4 seeded services, got %d", len(services))
+	if len(services) == 0 {
+		t.Errorf("expected services, got %d", len(services))
 	}
 
 	// 8. GET /api/pipelines
+	_, _ = database.Exec(`
+		INSERT INTO pipelines (id, name, branch, commit_hash, author, status, duration, timestamp, stages_json)
+		VALUES ('pip-test-1', 'test-pipeline', 'main', 'abc1234', 'test', 'success', '30s', 'now', '[]')
+	`)
 	pipeRes, err := http.Get(ts.URL + "/api/pipelines")
 	if err != nil || pipeRes.StatusCode != 200 {
 		t.Fatalf("GET /api/pipelines failed: %v", pipeRes.StatusCode)
@@ -280,8 +292,8 @@ func TestRESTAPIEndpoints(t *testing.T) {
 	var pipelines []db.Pipeline
 	_ = json.NewDecoder(pipeRes.Body).Decode(&pipelines)
 	pipeRes.Body.Close()
-	if len(pipelines) < 3 {
-		t.Errorf("expected at least 3 seeded pipelines, got %d", len(pipelines))
+	if len(pipelines) == 0 {
+		t.Errorf("expected pipelines, got %d", len(pipelines))
 	}
 
 	// 9. Static file test (404 when staticDir not found is expected, without crash)

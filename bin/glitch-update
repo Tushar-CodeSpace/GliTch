@@ -93,15 +93,13 @@ apply_update() {
       cp "${INSTALL_DIR}/data/glitch.db" "${INSTALL_DIR}/data/glitch.db.backup-$(date +%s)"
     fi
 
-    # Run database schema migrations
+    # Rebuild native Go daemon binary
+    echo -e "  • Rebuilding native Go daemon..."
+    go build -o "${INSTALL_DIR}/bin/glitch-daemon" ./services/daemon
+
+    # Run database schema migrations & cleanup
     echo -e "  • Migrating SQLite database..."
-    node -e '
-      import("./services/daemon/src/db.mjs").then(m => {
-        const { db, dbPath } = m.initDatabase();
-        console.log("    ✔ SQLite database schema migrated at: " + dbPath);
-        db.close();
-      }).catch(() => {});
-    ' 2>/dev/null || true
+    GLITCH_DB_PATH="${INSTALL_DIR}/data/glitch.db" "${INSTALL_DIR}/bin/glitch-daemon" db >/dev/null 2>&1 || true
 
     # Rebuild frontend assets if web package exists
     if [ -d "${INSTALL_DIR}/packages/web" ]; then

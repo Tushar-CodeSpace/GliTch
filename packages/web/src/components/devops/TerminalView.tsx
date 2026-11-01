@@ -17,17 +17,12 @@ export function TerminalView({ onAskGlitch }: Props) {
   const [history, setHistory] = useState<CommandEntry[]>([
     {
       id: "hist-0",
-      command: "glitch doctor",
-      output: `[GLITCH AI DEVOPS ENGINE v0.1.0-alpha]
-Initializing local system audit...
-✓ CPU topology: 8-core host (18.6% active utilization)
-✓ Memory sub-allocations: 7.9 GB / 16.7 GB
-✓ Docker daemon socket: Connected at unix:///var/run/docker.sock
-⚠ Found 2 advisory flags:
-  - celery-worker-cluster: memory high (1.42 GB)
-  - docker-daemon: 22.4 GB unpruned cache
-Type 'glitch triage' or 'glitch fix --all' for autonomous remediation.`,
-      timestamp: "10:14:02",
+      command: "glitch status",
+      output: `[GLITCH LOCAL DEVOPS CONSOLE]
+Local SQLite Daemon: Connected (http://127.0.0.1:4780)
+Engine: Go Native Microservice · SQLite 3 (WAL mode)
+Status: All systems operational. Type 'glitch help' for available commands.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     },
   ]);
   const [input, setInput] = useState("");
@@ -67,34 +62,27 @@ Commands:
   kubectl get pods       Inspect Kubernetes cluster pods
   clear                  Clear terminal session output`;
     } else if (lower.includes("status")) {
-      output = `[GLITCH VIRTUAL SRE - SERVICE MESH STATUS]
-NAME                     CATEGORY   STATUS     CPU     MEM       PORT
-ingress-nginx            proxy      RUNNING    4.2%    184 MB    80/443
-api-gateway              api        RUNNING    12.8%   412 MB    8080
-postgres-primary         database   RUNNING    18.5%   1.82 GB   5432
-redis-cache              database   RUNNING    6.1%    680 MB    6379
-celery-worker-cluster    worker     DEGRADED   44.7%   1.42 GB   Internal
-docker-daemon            container  RUNNING    8.9%    512 MB    unix:///sock
-
-Summary: 5 Healthy, 1 Degraded, 0 Stopped`;
+      output = `[GLITCH LOCAL STATUS]
+Daemon Endpoint: http://127.0.0.1:4780
+Database Engine: SQLite 3 (WAL Mode Enabled)
+Local Telemetry: Live Host Polling Active
+Active Incidents: 0
+Status: All local subsystems nominal.`;
     } else if (lower.includes("triage")) {
-      output = `[GLITCH AI INCIDENT TRIAGE]
-Analyzing recent kernel ring buffer & service logs...
-Detected 2 incidents:
-[CRITICAL] INC-308: Celery memory leak detected in worker-2
-  -> Proposed fix: 'glitch remediate worker-pool-2 --graceful'
-[WARNING]  INC-307: Reclaimable Docker storage layers (22.4 GB)
-  -> Proposed fix: 'docker system prune --volumes -f'
-
-Run 'glitch fix --all' to execute both automated fixes.`;
+      output = `[GLITCH ACTIVE INCIDENT TRIAGE]
+✔ Zero active incidents detected across your local host.
+✔ All system vitals and monitored processes are operating within nominal thresholds.`;
     } else if (lower.includes("fix")) {
       output = `[GLITCH AUTONOMOUS REMEDIATOR]
-Executing authorized playbooks:
-[1/2] Draining and recycling celery-worker-cluster...
-      ✓ Spawned replacement worker PID 50124 (Mem: 380 MB)
-[2/2] Running Docker prune on dangling image layers...
-      ✓ Reclaimed 22.41 GB disk volume space.
-All incidents successfully resolved. System status: NOMINAL.`;
+✔ Zero active incidents to fix. All local subsystems are nominal.`;
+    } else if (lower.includes("doctor")) {
+      output = `[GLITCH HOST HEALTH AUDIT]
+Initializing local host system audit...
+✔ CPU Topology: Host telemetry active
+✔ Memory Allocation: Operating within safe bounds
+✔ Local SQLite Database: Connected (Integrity: OK, WAL: active)
+✔ Zero unhandled incident flags
+Host health posture: Optimal.`;
     } else if (lower === "docker ps") {
       output = `CONTAINER ID   IMAGE                 COMMAND                  STATUS          PORTS
 4b892a01f78c   nginx:1.25-alpine     "/docker-entrypoint.…"   Up 14 days      0.0.0.0:80->80/tcp, 0.0.0.0:443->443/tcp

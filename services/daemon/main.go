@@ -186,7 +186,9 @@ func runTriageCli() {
 	defer rows.Close()
 
 	fmt.Println("⚡ ACTIVE INCIDENT TRIAGE:")
+	var count int
 	for rows.Next() {
+		count++
 		var id, title, sev, srv, status string
 		var cmd *string
 		if err := rows.Scan(&id, &title, &sev, &srv, &status, &cmd); err == nil {
@@ -202,5 +204,8 @@ func runTriageCli() {
 			fmt.Printf("   Service: %s\n", srv)
 			fmt.Printf("   Command: %s\n\n", command)
 		}
+	}
+	if count == 0 {
+		fmt.Println("✔ Zero active incidents detected. All local subsystems nominal.")
 	}
 }

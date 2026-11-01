@@ -48,10 +48,10 @@ export function GlitchCopilot({ messages, onSendMessage, onExecuteAction, incide
 
   const quickPrompts = [
     { label: "🔍 Triage Incidents", prompt: "Triage all active incidents and propose fix playbooks" },
-    { label: "🧠 Analyze Memory", prompt: "Analyze high memory usage in celery worker" },
-    { label: "🐳 Clean Docker Cache", prompt: "How much space can I free up with Docker prune?" },
+    { label: "🧠 Analyze Memory", prompt: "Analyze host memory utilization and running processes" },
+    { label: "🐳 Inspect Containers", prompt: "Inspect running Docker containers and daemon status" },
     { label: "🛡️ Audit Security", prompt: "Audit open ports and firewall security" },
-    { label: "🚀 Check CI Pipelines", prompt: "Check why staging pipeline failed" },
+    { label: "🚀 System Vitals", prompt: "Check host infrastructure health and load averages" },
   ];
 
   return (

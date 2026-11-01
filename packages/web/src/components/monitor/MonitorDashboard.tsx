@@ -156,28 +156,6 @@ export function MonitorDashboard({ onSignOut }: Props) {
       prev.map((m) => (m.actionId === actionId ? { ...m, actionExecuted: true } : m))
     );
 
-    if (actionId === "fix-celery" || actionId === "triage-all" || actionId === "fix-all") {
-      void resolveIncidentInDb("INC-308");
-      setIncidents((prev) =>
-        prev.map((inc) => (inc.service === "celery-worker-cluster" ? { ...inc, status: "resolved" } : inc))
-      );
-      void restartServiceInDb("celery-worker-cluster");
-      setServices((prev) =>
-        prev.map((srv) =>
-          srv.name === "celery-worker-cluster"
-            ? { ...srv, status: "running", memory: "380 MB", cpu: 14.2 }
-            : srv
-        )
-      );
-    }
-
-    if (actionId === "fix-docker" || actionId === "fix-all") {
-      void resolveIncidentInDb("INC-307");
-      setIncidents((prev) =>
-        prev.map((inc) => (inc.service === "docker-daemon" ? { ...inc, status: "resolved" } : inc))
-      );
-    }
-
     // Add confirmation message from Glitch
     setTimeout(() => {
       const confirmationMsg: ChatMessage = {
@@ -199,12 +177,12 @@ export function MonitorDashboard({ onSignOut }: Props) {
     );
 
     const inc = incidents.find((i) => i.id === id);
-    if (inc?.service === "celery-worker-cluster") {
-      void restartServiceInDb("celery-worker-cluster");
+    if (inc?.service) {
+      void restartServiceInDb(inc.service);
       setServices((prev) =>
         prev.map((srv) =>
-          srv.name === "celery-worker-cluster"
-            ? { ...srv, status: "running", memory: "380 MB", cpu: 14.2 }
+          srv.name === inc.service || srv.id === inc.service
+            ? { ...srv, status: "running" }
             : srv
         )
       );
@@ -468,9 +446,15 @@ export function MonitorDashboard({ onSignOut }: Props) {
                     <h2>Glitch Virtual DevOps Engineer</h2>
                     <span className="hero-ai-chip">NEURAL SRE ENGINE</span>
                   </div>
-                  <p>
-                    I detected <strong>{activeIncidents.length} actionable advisory alerts</strong> across your local container mesh. Memory pressure on <code>celery-worker-cluster</code> and Docker image layer caching are ready for 1-click remediation.
-                  </p>
+                  {activeIncidents.length > 0 ? (
+                    <p>
+                      I detected <strong>{activeIncidents.length} actionable advisory alert{activeIncidents.length === 1 ? "" : "s"}</strong> across your local host. Automated remediation playbooks are ready for execution.
+                    </p>
+                  ) : (
+                    <p>
+                      All systems operational. No active incidents or memory leaks detected across your local host.
+                    </p>
+                  )}
                   <div className="hero-actions">
                     <Button
                       variant="primary"
@@ -479,13 +463,15 @@ export function MonitorDashboard({ onSignOut }: Props) {
                     >
                       <Sparkles size={14} /> Open Copilot Triage
                     </Button>
-                    <Button
-                      variant="secondary"
-                      className="hero-action-btn"
-                      onClick={() => setActiveTab("incidents")}
-                    >
-                      <ShieldAlert size={14} /> View {activeIncidents.length} Alerts
-                    </Button>
+                    {activeIncidents.length > 0 && (
+                      <Button
+                        variant="secondary"
+                        className="hero-action-btn"
+                        onClick={() => setActiveTab("incidents")}
+                      >
+                        <ShieldAlert size={14} /> View {activeIncidents.length} Alert{activeIncidents.length === 1 ? "" : "s"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -493,15 +479,19 @@ export function MonitorDashboard({ onSignOut }: Props) {
               <div className="hero-card-right">
                 <div className="hero-metric-tile">
                   <span>AUTONOMOUS STATUS</span>
-                  <strong className="text-accent">GUARDING STACK</strong>
+                  <strong className={activeIncidents.length > 0 ? "text-amber" : "text-accent"}>
+                    {activeIncidents.length > 0 ? "ATTENTION REQUIRED" : "ALL SYSTEMS NOMINAL"}
+                  </strong>
                 </div>
                 <div className="hero-metric-tile">
-                  <span>CONTAINERS MONITORED</span>
-                  <strong>{services.length} Services</strong>
+                  <span>SERVICES MONITORED</span>
+                  <strong>{services.length} Service{services.length === 1 ? "" : "s"}</strong>
                 </div>
                 <div className="hero-metric-tile">
                   <span>DEPLOYMENT HEALTH</span>
-                  <strong className="text-accent">99.8% Nominal</strong>
+                  <strong className={activeIncidents.length > 0 ? "text-amber" : "text-accent"}>
+                    {activeIncidents.length > 0 ? "Action Needed" : "100.0% Nominal"}
+                  </strong>
                 </div>
               </div>
             </Panel>

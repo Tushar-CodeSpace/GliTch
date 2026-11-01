@@ -50,6 +50,15 @@ export function PipelinesView({ pipelines, onTriggerPipeline, onAskGlitch }: Pro
       </div>
 
       <div className="pipelines-list">
+        {pipelines.length === 0 && (
+          <Panel className="empty-state-card" style={{ textAlign: "center", padding: "3rem 1.5rem" }}>
+            <GitBranch size={36} className="text-muted" style={{ margin: "0 auto 1rem auto", display: "block" }} />
+            <h3 style={{ fontSize: "1.1rem", marginBottom: "0.5rem" }}>No Active Pipelines Found</h3>
+            <p style={{ color: "var(--color-muted)", fontSize: "0.9rem", maxWidth: "480px", margin: "0 auto" }}>
+              Continuous delivery pipelines and build telemetry will populate here once triggered or linked to your repository.
+            </p>
+          </Panel>
+        )}
         {pipelines.map((pipe) => {
           return (
             <Panel key={pipe.id} className="pipeline-card">
