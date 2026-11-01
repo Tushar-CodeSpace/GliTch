@@ -6,6 +6,7 @@ import {
   Cpu,
   Database,
   HardDrive,
+  LayoutDashboard,
   LogOut,
   MemoryStick,
   Monitor,
@@ -105,18 +106,64 @@ export function MonitorDashboard({ onSignOut }: Props) {
 
   return (
     <div className="dashboard-shell" ref={root}>
+      {/* Sidebar with only Overview */}
+      <aside className="sidebar">
+        <a
+          className="wordmark side-brand"
+          href="#"
+          onClick={(e) => e.preventDefault()}
+        >
+          <span className="brand-mark">
+            <Activity size={18} strokeWidth={2.5} />
+          </span>
+          <div className="side-brand-text">
+            <span>glitch<span className="wordmark-period">.</span></span>
+            <span className="ai-submark">VIRTUAL DEVOPS</span>
+          </div>
+        </a>
+
+        <div className="workspace-switch">
+          <div className="workspace-avatar">
+            <Bot size={15} />
+          </div>
+          <span>
+            <strong>Local SRE Cluster</strong>
+            <small>Autonomous AI active</small>
+          </span>
+        </div>
+
+        <div className="nav-label">DEVOPS WORKSPACE</div>
+        <nav className="side-nav">
+          <button
+            className="nav-item active"
+            onClick={() => {}}
+          >
+            <LayoutDashboard size={17} />
+            <span>Overview</span>
+            <span className="nav-active-dot" />
+          </button>
+        </nav>
+
+        <div className="sidebar-bottom">
+          <button className="nav-item signout" onClick={onSignOut}>
+            <LogOut size={17} />
+            <span>Sign out</span>
+          </button>
+          <div className="sidebar-version">
+            <span>GLITCH / 0.1.0-AI</span>
+            <span className="version-light">VIRTUAL SRE</span>
+          </div>
+        </div>
+      </aside>
+
       {/* Main Content Area */}
       <main className="dashboard-main" id="overview">
         {/* Topbar Header */}
         <header className="dashboard-topbar">
-          <div className="topbar-brand">
-            <span className="topbar-brand-mark">
-              <Activity size={18} strokeWidth={2.5} />
-            </span>
-            <div className="topbar-brand-text">
-              <span className="topbar-brand-title">glitch<span className="wordmark-period">.</span></span>
-              <span className="ai-submark">VIRTUAL DEVOPS</span>
-            </div>
+          <div className="breadcrumbs">
+            <span>Workspace</span>
+            <span className="crumb-sep">/</span>
+            <strong>Overview</strong>
           </div>
 
           <div className="topbar-actions">
@@ -143,15 +190,6 @@ export function MonitorDashboard({ onSignOut }: Props) {
             <div className="user-avatar" title="Local Operator">
               OP
             </div>
-
-            <button
-              className="topbar-signout-btn"
-              onClick={onSignOut}
-              title="Sign out of local DevOps console"
-            >
-              <LogOut size={14} />
-              <span>Sign out</span>
-            </button>
           </div>
         </header>
 
