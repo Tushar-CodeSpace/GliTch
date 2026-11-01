@@ -103,6 +103,7 @@ func (s *Server) registerRoutes() {
 	// API Endpoints
 	s.mux.HandleFunc("/api/health", s.handleHealth)
 	s.mux.HandleFunc("/api/metrics", s.handleMetrics)
+	s.mux.HandleFunc("/api/metrics/history", s.handleMetricsHistory)
 	s.mux.HandleFunc("/api/auth/login", s.handleLogin)
 	s.mux.HandleFunc("/api/auth/register", s.handleRegister)
 	s.mux.HandleFunc("/api/auth/verify", s.handleVerifyAuth)

@@ -138,12 +138,18 @@ func InitDatabase(dbPath string) (*sql.DB, string, error) {
 		platform TEXT,
 		uptime_seconds REAL,
 		cpu_percent REAL,
+		temperature_celsius REAL DEFAULT 0.0,
 		memory_used_percent REAL,
 		memory_used_bytes INTEGER,
 		memory_total_bytes INTEGER,
 		disk_used_percent REAL,
 		disk_used_bytes INTEGER,
 		disk_total_bytes INTEGER,
+		disk_read_mb_per_sec REAL DEFAULT 0.0,
+		disk_write_mb_per_sec REAL DEFAULT 0.0,
+		net_rx_kb_per_sec REAL DEFAULT 0.0,
+		net_tx_kb_per_sec REAL DEFAULT 0.0,
+		process_count INTEGER DEFAULT 0,
 		load_1m REAL,
 		load_5m REAL,
 		load_15m REAL,
@@ -154,6 +160,14 @@ func InitDatabase(dbPath string) (*sql.DB, string, error) {
 		db.Close()
 		return nil, "", fmt.Errorf("failed to execute database schema: %w", err)
 	}
+
+	// Schema migrations for metrics_history new columns (safe & idempotent)
+	_, _ = db.Exec("ALTER TABLE metrics_history ADD COLUMN temperature_celsius REAL DEFAULT 0.0;")
+	_, _ = db.Exec("ALTER TABLE metrics_history ADD COLUMN disk_read_mb_per_sec REAL DEFAULT 0.0;")
+	_, _ = db.Exec("ALTER TABLE metrics_history ADD COLUMN disk_write_mb_per_sec REAL DEFAULT 0.0;")
+	_, _ = db.Exec("ALTER TABLE metrics_history ADD COLUMN net_rx_kb_per_sec REAL DEFAULT 0.0;")
+	_, _ = db.Exec("ALTER TABLE metrics_history ADD COLUMN net_tx_kb_per_sec REAL DEFAULT 0.0;")
+	_, _ = db.Exec("ALTER TABLE metrics_history ADD COLUMN process_count INTEGER DEFAULT 0;")
 
 	// Update metadata
 	version := os.Getenv("GLITCH_VERSION")

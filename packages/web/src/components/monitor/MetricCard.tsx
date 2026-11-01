@@ -10,10 +10,12 @@ type Props = {
   detail: string;
   percent?: number;
   subDetail?: string;
+  caption?: string;
   icon: ReactNode;
   trend?: "up" | "down" | "steady";
   history?: number[];
   color?: MetricColor;
+  maxLimit?: number;
 };
 
 // Generates a smooth Catmull-Rom / Bezier spline SVG path
@@ -43,15 +45,18 @@ export function MetricCard({
   detail,
   percent,
   subDetail,
+  caption,
   icon,
   trend = "steady",
   history = [],
   color = "cyan",
+  maxLimit,
 }: Props) {
   // Generate SVG Sparkline coordinates from history array
   const points = history.length > 0 ? history : [percent ?? 20, percent ?? 20];
-  const minVal = Math.min(...points, 0);
-  const maxVal = Math.max(...points, 100);
+  const minVal = Math.min(...points);
+  const calculatedMax = maxLimit !== undefined ? maxLimit : Math.max(...points);
+  const maxVal = calculatedMax > minVal ? calculatedMax : (percent !== undefined ? 100 : minVal + 1);
   const range = maxVal - minVal || 1;
 
   const width = 130;
@@ -160,7 +165,7 @@ export function MetricCard({
       {/* Card Footer: Capacity & Trend */}
       <div className="metric-footer-row">
         <span className="metric-caption">
-          {percent !== undefined ? `${percent.toFixed(1)}% current capacity` : "Live telemetry probe"}
+          {caption || (percent !== undefined ? `${percent.toFixed(1)}% current capacity` : "Live telemetry probe")}
         </span>
         <span className={`metric-trend-chip trend-${trend}`}>
           {trend === "up" ? (

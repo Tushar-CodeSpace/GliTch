@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -26,33 +27,41 @@ func (s *Server) handleMetrics(w http.ResponseWriter, r *http.Request) {
 
 	// Persist sample to SQLite asynchronously (non-blocking)
 	go func(m system.DeviceMetrics) {
-		load1, load5, load15 := 0.0, 0.0, 0.0
-		if len(m.LoadAverage) > 0 {
-			load1 = m.LoadAverage[0]
-		}
-		if len(m.LoadAverage) > 1 {
-			load5 = m.LoadAverage[1]
-		}
-		if len(m.LoadAverage) > 2 {
-			load15 = m.LoadAverage[2]
-		}
-
-		_, _ = s.db.Exec(`
-			INSERT INTO metrics_history (
-				hostname, platform, uptime_seconds, cpu_percent,
-				memory_used_percent, memory_used_bytes, memory_total_bytes,
-				disk_used_percent, disk_used_bytes, disk_total_bytes,
-				load_1m, load_5m, load_15m
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`,
-			m.Hostname, m.Platform, m.UptimeSeconds, m.CPUPercent,
-			m.Memory.UsedPercent, m.Memory.UsedBytes, m.Memory.TotalBytes,
-			m.Disk.UsedPercent, m.Disk.UsedBytes, m.Disk.TotalBytes,
-			load1, load5, load15,
-		)
+		_ = db.RecordMetricsSample(s.db, m)
 	}(metrics)
 
 	s.sendJSON(w, http.StatusOK, metrics)
+}
+
+func (s *Server) handleMetricsHistory(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		s.sendError(w, http.StatusMethodNotAllowed, "Method not allowed")
+		return
+	}
+
+	limit := 60
+	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
+		if val, err := strconv.Atoi(limitStr); err == nil && val > 0 {
+			limit = val
+		}
+	}
+
+	timeRange := r.URL.Query().Get("range")
+	if timeRange == "" {
+		timeRange = "1h"
+	}
+
+	points, err := db.GetMetricsHistory(s.db, limit, timeRange)
+	if err != nil {
+		s.sendError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	if points == nil {
+		points = []db.MetricHistoryPoint{}
+	}
+
+	s.sendJSON(w, http.StatusOK, points)
 }
 
 func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {

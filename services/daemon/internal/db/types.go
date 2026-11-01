@@ -89,3 +89,28 @@ type DBStatus struct {
 	IntegrityCheck string         `json:"integrity_check"`
 	WALMode        bool           `json:"wal_mode"`
 }
+
+// MetricHistoryPoint represents a recorded host telemetry sample in SQLite.
+type MetricHistoryPoint struct {
+	ID                 int64   `json:"id"`
+	Hostname           string  `json:"hostname"`
+	Platform           string  `json:"platform"`
+	UptimeSeconds      int64   `json:"uptime_seconds"`
+	CPUPercent         float64 `json:"cpu_percent"`
+	TemperatureCelsius float64 `json:"temperature_celsius"`
+	MemoryUsedPercent  float64 `json:"memory_used_percent"`
+	MemoryUsedBytes    int64   `json:"memory_used_bytes"`
+	MemoryTotalBytes   int64   `json:"memory_total_bytes"`
+	DiskUsedPercent    float64 `json:"disk_used_percent"`
+	DiskUsedBytes      int64   `json:"disk_used_bytes"`
+	DiskTotalBytes     int64   `json:"disk_total_bytes"`
+	DiskReadMBPerSec   float64 `json:"disk_read_mb_per_sec"`
+	DiskWriteMBPerSec  float64 `json:"disk_write_mb_per_sec"`
+	NetRxKBPerSec      float64 `json:"net_rx_kb_per_sec"`
+	NetTxKBPerSec      float64 `json:"net_tx_kb_per_sec"`
+	ProcessCount       int     `json:"process_count"`
+	Load1m             float64 `json:"load_1m"`
+	Load5m             float64 `json:"load_5m"`
+	Load15m            float64 `json:"load_15m"`
+	RecordedAt         string  `json:"recorded_at"`
+}

@@ -14,6 +14,7 @@ import (
 
 	"github.com/Tushar-CodeSpace/GliTch/services/daemon/internal/db"
 	"github.com/Tushar-CodeSpace/GliTch/services/daemon/internal/server"
+	"github.com/Tushar-CodeSpace/GliTch/services/daemon/internal/system"
 )
 
 func main() {
@@ -65,6 +66,27 @@ func main() {
 	fmt.Printf("✔ [Glitch] SQLite database initialized at: %s\n", resolvedDBPath)
 
 	srvHandler := server.NewServer(database, resolvedDBPath, *flagStatic, "0.1.0")
+
+	// Background Telemetry Sampling & SQLite Historian (samples every 10s, prunes >48h)
+	go func() {
+		ticker := time.NewTicker(10 * time.Second)
+		pruneTicker := time.NewTicker(1 * time.Hour)
+		defer ticker.Stop()
+		defer pruneTicker.Stop()
+
+		// Initial sample
+		_ = db.RecordMetricsSample(database, system.CollectDeviceMetrics())
+
+		for {
+			select {
+			case <-ticker.C:
+				_ = db.RecordMetricsSample(database, system.CollectDeviceMetrics())
+			case <-pruneTicker.C:
+				_ = db.PruneOldMetrics(database, 48)
+			}
+		}
+	}()
+
 	addr := fmt.Sprintf("%s:%s", *flagHost, *flagPort)
 
 	httpServer := &http.Server{

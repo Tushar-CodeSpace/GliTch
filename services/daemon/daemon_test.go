@@ -142,6 +142,9 @@ func TestSystemTelemetryCollector(t *testing.T) {
 	if metrics.Disk.TotalBytes <= 0 {
 		t.Errorf("expected positive total disk bytes")
 	}
+	if metrics.TemperatureCelsius <= 0 {
+		t.Errorf("expected positive temperature celsius, got %f", metrics.TemperatureCelsius)
+	}
 	if len(metrics.LoadAverage) != 3 {
 		t.Errorf("expected 3 load average values, got %d", len(metrics.LoadAverage))
 	}
@@ -187,6 +190,32 @@ func TestRESTAPIEndpoints(t *testing.T) {
 	res.Body.Close()
 	if dbStatus.Engine != "SQLite 3" || dbStatus.IntegrityCheck != "ok" || len(dbStatus.Tables) < 8 {
 		t.Errorf("unexpected db status: %+v", dbStatus)
+	}
+
+	// 2b. GET /api/metrics & GET /api/metrics/history
+	mRes, err := http.Get(ts.URL + "/api/metrics")
+	if err != nil || mRes.StatusCode != 200 {
+		t.Fatalf("GET /api/metrics failed: status %v, err %v", mRes.StatusCode, err)
+	}
+	var devMetrics system.DeviceMetrics
+	_ = json.NewDecoder(mRes.Body).Decode(&devMetrics)
+	mRes.Body.Close()
+	if devMetrics.CPUPercent < 0 || devMetrics.TemperatureCelsius <= 0 {
+		t.Errorf("unexpected device metrics: %+v", devMetrics)
+	}
+
+	// Wait briefly for asynchronous SQLite sample insertion
+	_ = db.RecordMetricsSample(database, devMetrics)
+
+	histRes, err := http.Get(ts.URL + "/api/metrics/history?range=1h&limit=50")
+	if err != nil || histRes.StatusCode != 200 {
+		t.Fatalf("GET /api/metrics/history failed: status %v, err %v", histRes.StatusCode, err)
+	}
+	var histPoints []db.MetricHistoryPoint
+	_ = json.NewDecoder(histRes.Body).Decode(&histPoints)
+	histRes.Body.Close()
+	if len(histPoints) == 0 {
+		t.Errorf("expected non-empty metrics history points")
 	}
 
 	// 3. POST /api/auth/login invalid credentials
